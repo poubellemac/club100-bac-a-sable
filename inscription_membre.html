@@ -214,12 +214,16 @@
   const EJS_SERVICE2  = "service_4h2k91k";
   const EJS_TEMPLATE2 = "template_qn0er0w";
 
+  // Instances séparées pour les 2 comptes
+  const ejs1 = emailjs.createInstance();
+  const ejs2 = emailjs.createInstance();
+
   let sb, cotisation = null, paiement = null;
 
   window.addEventListener('DOMContentLoaded', () => {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    emailjs.init(EJS_PUBLIC); // init compte 1 (poubellemac)
-    // Note: le 2ème service utilise sa propre clé dans l'appel send
+    ejs1.init(EJS_PUBLIC);
+    ejs2.init(EJS_PUBLIC2);
   });
 
   function selectCotisation(val) {
@@ -299,7 +303,7 @@
 
     // Mail 1 — confirmation au membre
     try {
-      await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, {
+      await ejs1.send(EJS_SERVICE, EJS_TEMPLATE, {
         to_name: prenom + ' ' + nom,
         to_email: email,
         login: prenom + ' ' + nom,
@@ -312,7 +316,7 @@
       console.error('Erreur mail membre:', e);
     }
 
-    // Mail 2 — notification asso (clubreims2 — clé en 4ème param)
+    // Mail 2 — notification asso (clubreims2)
     try {
       await emailjs.send(EJS_SERVICE2, EJS_TEMPLATE2, {
         prenom: prenom,
@@ -321,7 +325,7 @@
         telephone: tel,
         cotisation: cotisation + '\u20ac',
         paiement: paiement
-      }, EJS_PUBLIC2);
+      }, { publicKey: EJS_PUBLIC2 });
     } catch(e) {
       console.error('Erreur mail asso:', e);
     }
