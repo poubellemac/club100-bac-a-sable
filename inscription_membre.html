@@ -192,8 +192,7 @@
   <div class="card">
     <p class="success-text">
       Votre bulletin d'adhésion a bien été reçu.<br><br>
-      Vous allez recevoir un <strong style="color:var(--or);">mail de confirmation</strong>.<br><br>
-      Votre compte sera activé par l'administrateur après réception de votre règlement.<br><br>
+      Votre facture vous sera envoyée par l'administrateur après réception de votre règlement.<br><br>
       <strong style="color:var(--or);">Bienvenue au Club 100 Reims en Champagne ! 🥂</strong>
     </p>
   </div>
@@ -297,28 +296,7 @@
       return showError('Erreur : ' + error.message);
     }
 
-    // Mail 1 — accusé de réception au membre (même template que l'asso, simple)
-    try {
-      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: EJS_SERVICE,
-          template_id: 'template_qn9er0w',
-          user_id: EJS_PUBLIC,
-          template_params: {
-            titre:     "Demande d'adhesion recue",
-            prenom:    prenom,
-            nom:       nom,
-            email:     email,
-            telephone: tel,
-            detail:    "Votre demande d'adhesion au Club 100 Reims a bien ete recue.\nCotisation : " + cotisation + " EUR\nReglement : " + paiement + "\n\nVotre compte sera active apres verification de votre paiement. Vous recevrez votre facture a ce moment-la."
-          }
-        })
-      });
-    } catch(e) { console.error('Erreur mail membre:', e); }
-
-    // Mail 2 — notification asso
+    // Mail asso — notification nouvelle demande
     try {
       await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
