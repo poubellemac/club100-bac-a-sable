@@ -204,9 +204,15 @@
 <script>
   const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
   const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+  // Compte 1 — poubellemac (mail au membre)
   const EJS_PUBLIC   = "JMg0VaPvHEtJPKJHY";
   const EJS_SERVICE  = "service_2jxbi28";
-  const EJS_TEMPLATE = "template_865wa08"; // Inscription Membre Club100
+  const EJS_TEMPLATE = "template_865wa08";
+
+  // Compte 2 — clubreims2 (notification asso)
+  const EJS_PUBLIC2   = "x9cMeFn-4R6EbOHdS";
+  const EJS_SERVICE2  = "service_4h2k91k";
+  const EJS_TEMPLATE2 = "template_qn0er0w";
 
   let sb, cotisation = null, paiement = null;
 
@@ -290,19 +296,34 @@
       return showError('Erreur : ' + error.message);
     }
 
-    // Mail de confirmation au membre
+    // Mail 1 — confirmation au membre
     try {
       await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, {
         to_name: prenom + ' ' + nom,
         to_email: email,
         login: prenom + ' ' + nom,
         mdp: mdp,
-        cotisation: cotisation + '€',
+        cotisation: cotisation + '\u20ac',
         paiement: paiement,
         message: 'Votre compte est créé. Il sera activé après réception de votre règlement.'
       });
     } catch(e) {
-      console.error('Erreur mail:', e);
+      console.error('Erreur mail membre:', e);
+    }
+
+    // Mail 2 — notification asso (clubreims2)
+    try {
+      emailjs.init(EJS_PUBLIC2);
+      await emailjs.send(EJS_SERVICE2, EJS_TEMPLATE2, {
+        prenom: prenom,
+        nom: nom,
+        email: email,
+        telephone: tel,
+        cotisation: cotisation + '\u20ac',
+        paiement: paiement
+      });
+    } catch(e) {
+      console.error('Erreur mail asso:', e);
     }
 
     document.getElementById('formPanel').style.display = 'none';
