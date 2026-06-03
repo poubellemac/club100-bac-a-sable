@@ -126,6 +126,24 @@
     transition: background 0.18s; white-space: nowrap;
   }
   .btn-valider:hover { background: var(--or-light); }
+  .btn-supprimer {
+    font-size: 11px; font-weight: 700; padding: 5px 10px;
+    background: transparent; color: var(--red);
+    border: 1px solid var(--red); border-radius: 8px; cursor: pointer;
+    font-family: 'Lato', sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+    transition: all 0.18s; white-space: nowrap; margin-left: 6px;
+  }
+  .btn-supprimer:hover { background: rgba(139,26,26,0.15); }
+  .tri-bar {
+    display: flex; gap: 8px; margin-bottom: 1rem;
+  }
+  .btn-tri {
+    font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    font-family: 'Lato', sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+    background: transparent; color: var(--or-light); border: 1px solid var(--border);
+    transition: all 0.18s;
+  }
+  .btn-tri.active { background: rgba(201,168,76,0.15); border-color: var(--or); color: var(--or); }
   .empty-msg { font-size: 13px; color: var(--or-light); opacity: 0.3; text-align: center; padding: 1rem 0; font-style: italic; }
 </style>
 </head>
@@ -201,13 +219,19 @@
 <!-- MEMBRES EN ATTENTE -->
 <div class="section-label" style="margin-top:1.5rem">Membres en attente de validation</div>
 <div class="attente-card">
-  <div id="attenteList"><div class="empty-msg">Chargement…</div></div>
+  <div class="tri-bar">
+  <button class="btn-tri active" id="tri-date" onclick="setTri('date')">Par date</button>
+  <button class="btn-tri" id="tri-nom" onclick="setTri('nom')">Par nom</button>
+</div>
+<div id="attenteList"><div class="empty-msg">Chargement…</div></div>
 </div>
 
 <script>
 const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
-let sb, user;
+const EJS_PUBLIC   = "x9cMeFn-4R6EbOHdS";
+const EJS_SERVICE  = "service_eh2k91k";
+let sb, user, triCourant = 'date', membresAttente = [];
 
 window.addEventListener('DOMContentLoaded', async () => {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -232,45 +256,94 @@ async function loadStats() {
 }
 
 async function loadAttente() {
-  const { data } = await sb.from('membres').select('*').eq('statut','en_attente').order('date_inscription', {ascending:true});
+  const { data } = await sb.from('membres').select('*').eq('statut','en_attente');
+  membresAttente = data || [];
+  afficherAttente();
+}
+
+function setTri(tri) {
+  triCourant = tri;
+  document.getElementById('tri-date').classList.toggle('active', tri === 'date');
+  document.getElementById('tri-nom').classList.toggle('active', tri === 'nom');
+  afficherAttente();
+}
+
+function afficherAttente() {
   const list = document.getElementById('attenteList');
-  if (!data || data.length === 0) {
+  if (!membresAttente.length) {
     list.innerHTML = '<div class="empty-msg">Aucun membre en attente ✓</div>';
     return;
   }
-  list.innerHTML = data.map(m => `
+  const sorted = [...membresAttente].sort((a,b) => {
+    if (triCourant === 'nom') return (a.nom+a.prenom).localeCompare(b.nom+b.prenom);
+    return new Date(a.date_inscription) - new Date(b.date_inscription);
+  });
+  list.innerHTML = sorted.map(m => `
     <div class="membre-row" id="row-${m.id}">
       <div class="membre-info">
         <div class="membre-nom">${m.prenom} ${m.nom}</div>
         <div class="membre-detail">${m.type_cotisation}€ · ${m.mode_paiement} · ${m.email}</div>
       </div>
-      <button class="btn-valider" onclick="validerMembre(${m.id})">Valider</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-valider" onclick="validerMembre(${m.id})">Valider</button>
+        <button class="btn-supprimer" onclick="supprimerMembre(${m.id})">✕</button>
+      </div>
     </div>
   `).join('');
 }
 
 async function validerMembre(id) {
   if (!confirm('Valider ce membre et activer son compte ?')) return;
+  const membre = membresAttente.find(m => m.id === id);
+  if (!membre) return;
+
+  // 1. Mettre à jour statut
   const { error } = await sb.from('membres').update({
     statut: 'actif',
     date_validation: new Date().toISOString(),
     valide_par: user.prenom + ' ' + user.nom
   }).eq('id', id);
-
   if (error) { alert('Erreur : ' + error.message); return; }
 
-  // Retirer la ligne
-  const row = document.getElementById('row-' + id);
-  if (row) row.remove();
+  // 2. Générer numéro de facture
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+  const { data: lastFact } = await sb.from('factures')
+    .select('numero').like('numero', dateStr + '%')
+    .order('numero', {ascending: false}).limit(1);
+  let seq = 1;
+  if (lastFact && lastFact.length > 0) {
+    const parts = lastFact[0].numero.split('-');
+    if (parts.length === 2) seq = parseInt(parts[1]) + 1;
+  }
+  const numero = `${dateStr}-${String(seq).padStart(3,'0')}`;
 
-  // Recharger stats
+  // 3. Enregistrer facture
+  await sb.from('factures').insert([{
+    numero,
+    type: 'adhesion',
+    membre_nom: membre.prenom + ' ' + membre.nom,
+    montant: parseFloat(membre.type_cotisation),
+    statut: 'en_attente',
+    description: 'Cotisation adhésion Club 100 — ' + membre.type_cotisation + '€'
+  }]);
+
+  // 4. Retirer de la liste locale
+  membresAttente = membresAttente.filter(m => m.id !== id);
+  afficherAttente();
   loadStats();
 
-  // Vérifier si plus rien
-  const remaining = document.querySelectorAll('[id^="row-"]');
-  if (remaining.length === 0) {
-    document.getElementById('attenteList').innerHTML = '<div class="empty-msg">Aucun membre en attente ✓</div>';
-  }
+  alert('✓ Membre validé — Facture ' + numero + ' créée.
+Mail à envoyer : ' + membre.email);
+}
+
+async function supprimerMembre(id) {
+  if (!confirm('Supprimer ce membre en attente ? Cette action est irréversible.')) return;
+  const { error } = await sb.from('membres').delete().eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  membresAttente = membresAttente.filter(m => m.id !== id);
+  afficherAttente();
+  loadStats();
 }
 
 function logout() {
