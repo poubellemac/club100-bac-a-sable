@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Club 100 — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --noir: #0F0F0F; --noir-soft: #1A1A1A; --noir-card: #202020;
+    --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+    --blanc: #F5F0E8; --gris-mid: #444;
+    --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+    --green: #2E6B3E; --red: #8B1A1A;
+  }
+  body {
+    font-family: 'Lato', sans-serif;
+    background: var(--noir);
+    color: var(--blanc);
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 2rem 1rem 4rem;
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 65%);
+  }
+
+  /* HEADER */
+  .header {
+    width: 100%; max-width: 600px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2rem; padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-logo { display: flex; align-items: center; gap: 12px; }
+  .logo-img { width: 44px; height: auto; filter: drop-shadow(0 0 8px rgba(201,168,76,0.3)); }
+  .header-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.1rem; }
+  .header-sub { font-size: 11px; color: var(--or-light); opacity: 0.4; letter-spacing: 0.1em; text-transform: uppercase; }
+  .btn-logout {
+    font-size: 12px; color: var(--or-light); opacity: 0.35;
+    background: none; border: none; cursor: pointer;
+    font-family: 'Lato', sans-serif; letter-spacing: 0.08em;
+    text-transform: uppercase; transition: opacity 0.2s;
+  }
+  .btn-logout:hover { opacity: 0.8; }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; width: 100%; max-width: 600px; margin-bottom: 1.75rem;
+  }
+  .stat-card {
+    background: var(--noir-soft); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1rem; text-align: center;
+  }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--or); line-height: 1; }
+  .stat-lbl { font-size: 10px; color: var(--or-light); opacity: 0.4; letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px; }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--or-light); opacity: 0.35;
+    max-width: 600px; width: 100%; margin-bottom: 0.6rem; margin-top: 0.75rem;
+  }
+
+  /* GRILLE TUILES */
+  .tuiles {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; max-width: 600px; width: 100%;
+  }
+  .tuile {
+    background: var(--noir-soft);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem;
+    text-decoration: none; color: var(--blanc);
+    display: flex; flex-direction: column; gap: 8px;
+    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .tuile::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(201,168,76,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .tuile:hover { border-color: var(--or); background: #222; }
+  .tuile-icon { font-size: 1.6rem; }
+  .tuile-nom {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem; color: var(--or); line-height: 1.2;
+  }
+  .tuile-desc { font-size: 12px; color: var(--or-light); opacity: 0.5; line-height: 1.4; }
+  .tuile-badge {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 10px; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .badge-live { background: rgba(46,107,62,0.2); color: #4CAF50; border: 1px solid rgba(46,107,62,0.3); }
+  .badge-test { background: rgba(201,168,76,0.12); color: var(--or); border: 1px solid var(--border); }
+  .badge-todo { background: rgba(68,68,68,0.3); color: var(--gris-mid); border: 1px solid rgba(68,68,68,0.4); }
+
+  /* MEMBRES EN ATTENTE */
+  .attente-card {
+    background: var(--noir-soft); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.25rem;
+    max-width: 600px; width: 100%; margin-top: 0.75rem;
+  }
+  .attente-title {
+    font-family: 'Playfair Display', serif; font-size: 12px; color: var(--or);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+  }
+  .membre-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .membre-row:last-child { border-bottom: none; }
+  .membre-info { flex: 1; }
+  .membre-nom { font-weight: 700; }
+  .membre-detail { font-size: 11px; color: var(--or-light); opacity: 0.5; margin-top: 2px; }
+  .btn-valider {
+    font-size: 11px; font-weight: 700; padding: 5px 12px;
+    background: var(--or); color: var(--noir);
+    border: none; border-radius: 8px; cursor: pointer;
+    font-family: 'Lato', sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+    transition: background 0.18s; white-space: nowrap;
+  }
+  .btn-valider:hover { background: var(--or-light); }
+  .empty-msg { font-size: 13px; color: var(--or-light); opacity: 0.3; text-align: center; padding: 1rem 0; font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <img src="data:image/jpeg;base64,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" alt="Club 100" class="logo-img" />
+    <div>
+      <div class="header-title">Backoffice Admin</div>
+      <div class="header-sub">Club 100 Les Centaures</div>
+    </div>
+  </div>
+  <button class="btn-logout" onclick="logout()">Déconnexion</button>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-card"><div class="stat-num" id="statMembres">—</div><div class="stat-lbl">Membres</div></div>
+  <div class="stat-card"><div class="stat-num" id="statActifs">—</div><div class="stat-lbl">Actifs</div></div>
+  <div class="stat-card"><div class="stat-num" id="statAttente">—</div><div class="stat-lbl">En attente</div></div>
+</div>
+
+<!-- TUILES OUTILS -->
+<div class="section-label">Outils</div>
+<div class="tuiles">
+
+  <a class="tuile" href="pointage.html">
+    <span class="tuile-badge badge-live">Live</span>
+    <div class="tuile-icon">✅</div>
+    <div class="tuile-nom">Pointage Événement</div>
+    <div class="tuile-desc">Présences jour J, ajout manuel, export mail</div>
+  </a>
+
+  <a class="tuile" href="inscriptions_event.html">
+    <span class="tuile-badge badge-live">Live</span>
+    <div class="tuile-icon">📋</div>
+    <div class="tuile-nom">Inscriptions Event</div>
+    <div class="tuile-desc">Formulaire d'inscription + backoffice</div>
+  </a>
+
+  <a class="tuile" href="facture.html">
+    <span class="tuile-badge badge-test">Test</span>
+    <div class="tuile-icon">🧾</div>
+    <div class="tuile-nom">Factures</div>
+    <div class="tuile-desc">Création, historique et export PDF</div>
+  </a>
+
+  <a class="tuile" href="reset.html">
+    <span class="tuile-badge badge-test">Test</span>
+    <div class="tuile-icon">🗑</div>
+    <div class="tuile-nom">Reset Inscriptions</div>
+    <div class="tuile-desc">Archive + supprime la base event</div>
+  </a>
+
+  <a class="tuile" href="inscription_membre.html">
+    <span class="tuile-badge badge-test">Test</span>
+    <div class="tuile-icon">📝</div>
+    <div class="tuile-nom">Bulletin d'adhésion</div>
+    <div class="tuile-desc">Formulaire d'inscription à l'asso</div>
+  </a>
+
+  <a class="tuile" href="commande_club100.html">
+    <span class="tuile-badge badge-todo">À venir</span>
+    <div class="tuile-icon">👕</div>
+    <div class="tuile-nom">Commande Polo</div>
+    <div class="tuile-desc">Commandes vêtements + récap mail</div>
+  </a>
+
+</div>
+
+<!-- MEMBRES EN ATTENTE -->
+<div class="section-label" style="margin-top:1.5rem">Membres en attente de validation</div>
+<div class="attente-card">
+  <div id="attenteList"><div class="empty-msg">Chargement…</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+let sb, user;
+
+window.addEventListener('DOMContentLoaded', async () => {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Vérif session admin
+  const stored = sessionStorage.getItem('club100_user');
+  if (!stored) { window.location.href = 'connexion.html'; return; }
+  user = JSON.parse(stored);
+  if (user.role !== 'admin') { window.location.href = 'accueil_membre.html'; return; }
+
+  loadStats();
+  loadAttente();
+});
+
+async function loadStats() {
+  const { count: total } = await sb.from('membres').select('*', {count:'exact',head:true});
+  const { count: actifs } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('statut','actif');
+  const { count: att } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('statut','en_attente');
+  document.getElementById('statMembres').textContent = total ?? 0;
+  document.getElementById('statActifs').textContent = actifs ?? 0;
+  document.getElementById('statAttente').textContent = att ?? 0;
+}
+
+async function loadAttente() {
+  const { data } = await sb.from('membres').select('*').eq('statut','en_attente').order('date_inscription', {ascending:true});
+  const list = document.getElementById('attenteList');
+  if (!data || data.length === 0) {
+    list.innerHTML = '<div class="empty-msg">Aucun membre en attente ✓</div>';
+    return;
+  }
+  list.innerHTML = data.map(m => `
+    <div class="membre-row" id="row-${m.id}">
+      <div class="membre-info">
+        <div class="membre-nom">${m.prenom} ${m.nom}</div>
+        <div class="membre-detail">${m.type_cotisation}€ · ${m.mode_paiement} · ${m.email}</div>
+      </div>
+      <button class="btn-valider" onclick="validerMembre(${m.id})">Valider</button>
+    </div>
+  `).join('');
+}
+
+async function validerMembre(id) {
+  if (!confirm('Valider ce membre et activer son compte ?')) return;
+  const { error } = await sb.from('membres').update({
+    statut: 'actif',
+    date_validation: new Date().toISOString(),
+    valide_par: user.prenom + ' ' + user.nom
+  }).eq('id', id);
+
+  if (error) { alert('Erreur : ' + error.message); return; }
+
+  // Retirer la ligne
+  const row = document.getElementById('row-' + id);
+  if (row) row.remove();
+
+  // Recharger stats
+  loadStats();
+
+  // Vérifier si plus rien
+  const remaining = document.querySelectorAll('[id^="row-"]');
+  if (remaining.length === 0) {
+    document.getElementById('attenteList').innerHTML = '<div class="empty-msg">Aucun membre en attente ✓</div>';
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('club100_user');
+  window.location.href = 'connexion.html';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Club 100 — Espace Membre</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --noir: #0F0F0F; --noir-soft: #1A1A1A;
+    --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+    --blanc: #F5F0E8; --gris-mid: #444;
+    --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+    --green: #2E6B3E; --green-light: #E8F4EC; --green-dark: #1A4027;
+    --red: #8B1A1A;
+  }
+  body {
+    font-family: 'Lato', sans-serif;
+    background: var(--noir);
+    color: var(--blanc);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 4rem;
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.05) 0%, transparent 65%);
+  }
+  /* HEADER */
+  .header {
+    width: 100%; max-width: 540px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-logo { display: flex; align-items: center; gap: 12px; }
+  .logo-img { width: 44px; height: auto; filter: drop-shadow(0 0 8px rgba(201,168,76,0.3)); }
+  .header-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.1rem; }
+  .header-sub { font-size: 11px; color: var(--or-light); opacity: 0.4; letter-spacing: 0.1em; text-transform: uppercase; }
+  .btn-logout {
+    font-size: 12px; color: var(--or-light); opacity: 0.35;
+    background: none; border: none; cursor: pointer;
+    font-family: 'Lato', sans-serif; letter-spacing: 0.08em;
+    text-transform: uppercase; transition: opacity 0.2s;
+  }
+  .btn-logout:hover { opacity: 0.8; }
+
+  /* CARTE PROFIL */
+  .card {
+    background: var(--noir-soft);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    max-width: 540px; width: 100%;
+    margin-bottom: 1rem;
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 12px; color: var(--or);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 1rem; padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .profil-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 14px; }
+  .profil-label { color: var(--or-light); opacity: 0.5; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .profil-val { font-weight: 700; }
+  .badge-statut {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 3px 10px; border-radius: 20px; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .badge-actif { background: var(--green-light); color: var(--green-dark); }
+  .badge-attente { background: rgba(201,168,76,0.12); color: var(--or); border: 1px solid var(--border); }
+  .badge-suspendu { background: rgba(139,26,26,0.12); color: #E57373; }
+
+  /* TUILE EVENT */
+  .event-card {
+    background: var(--noir-soft);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    max-width: 540px; width: 100%;
+    margin-bottom: 1rem;
+  }
+  .event-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .event-nom { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--or); }
+  .event-date { font-size: 12px; color: var(--or-light); opacity: 0.5; margin-top: 3px; }
+  .badge-event-actif {
+    font-size: 11px; font-weight: 700; padding: 4px 10px;
+    background: rgba(46,107,62,0.15); color: #4CAF50;
+    border: 1px solid rgba(46,107,62,0.3); border-radius: 20px;
+    letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap;
+  }
+  .badge-event-ferme {
+    font-size: 11px; font-weight: 700; padding: 4px 10px;
+    background: rgba(68,68,68,0.3); color: var(--gris-mid);
+    border: 1px solid rgba(68,68,68,0.4); border-radius: 20px;
+    letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap;
+    color: var(--or-light); opacity: 0.4;
+  }
+  .event-details { font-size: 13px; color: var(--or-light); opacity: 0.6; margin-bottom: 1rem; line-height: 1.6; }
+  .btn-event {
+    display: block; width: 100%;
+    padding: 12px;
+    background: var(--or); color: var(--noir);
+    border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 700; font-family: 'Lato', sans-serif;
+    cursor: pointer; letter-spacing: 0.06em; text-transform: uppercase;
+    text-align: center; text-decoration: none;
+    transition: background 0.18s;
+  }
+  .btn-event:hover { background: var(--or-light); }
+  .btn-event.disabled {
+    background: var(--gris-mid); color: rgba(245,240,232,0.3);
+    cursor: not-allowed; opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* NO EVENT */
+  .no-event {
+    text-align: center; padding: 2rem 1rem;
+    font-size: 14px; color: var(--or-light); opacity: 0.35; font-style: italic;
+  }
+  .divider { width: 50px; height: 1px; background: linear-gradient(to right, transparent, var(--or), transparent); margin: 0.25rem auto 1.25rem; }
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--or-light); opacity: 0.35;
+    max-width: 540px; width: 100%; margin-bottom: 0.5rem; margin-top: 0.5rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <img src="data:image/jpeg;base64,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" alt="Club 100" class="logo-img" />
+    <div>
+      <div class="header-title">Club 100</div>
+      <div class="header-sub">Les Centaures</div>
+    </div>
+  </div>
+  <button class="btn-logout" onclick="logout()">Déconnexion</button>
+</div>
+
+<div class="section-label">Mon profil</div>
+
+<!-- CARTE PROFIL -->
+<div class="card" id="profilCard">
+  <div class="card-title">Informations</div>
+  <div class="profil-row">
+    <span class="profil-label">Nom</span>
+    <span class="profil-val" id="profilNom">—</span>
+  </div>
+  <div class="profil-row">
+    <span class="profil-label">Cotisation</span>
+    <span class="profil-val" id="profilCotisation">—</span>
+  </div>
+  <div class="profil-row">
+    <span class="profil-label">Statut</span>
+    <span id="profilStatut">—</span>
+  </div>
+</div>
+
+<div class="divider"></div>
+<div class="section-label">Prochain événement</div>
+
+<!-- CARTE EVENT -->
+<div class="event-card" id="eventCard">
+  <div class="no-event" id="noEvent" style="display:none">Aucun événement en cours pour le moment.</div>
+  <div id="eventContent" style="display:none">
+    <div class="event-header">
+      <div>
+        <div class="event-nom" id="evNom">—</div>
+        <div class="event-date" id="evDate">—</div>
+      </div>
+      <div id="evBadge"></div>
+    </div>
+    <div class="event-details" id="evDetails"></div>
+    <a id="evBtn" href="inscriptions_event.html" class="btn-event">S'inscrire à l'événement</a>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+let sb, user;
+
+window.addEventListener('DOMContentLoaded', async () => {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Vérif session
+  const stored = sessionStorage.getItem('club100_user');
+  if (!stored) { window.location.href = 'connexion.html'; return; }
+  user = JSON.parse(stored);
+
+  // Profil
+  document.getElementById('profilNom').textContent = user.prenom + ' ' + user.nom;
+  document.getElementById('profilCotisation').textContent =
+    user.cotisation === '150' ? '150 € (bienfaiteur)' :
+    user.cotisation === '30'  ? '30 € (standard)' : user.cotisation || '—';
+
+  const statutEl = document.getElementById('profilStatut');
+  if (user.statut === 'actif') {
+    statutEl.innerHTML = '<span class="badge-statut badge-actif">✓ Actif</span>';
+  } else if (user.statut === 'en_attente') {
+    statutEl.innerHTML = '<span class="badge-statut badge-attente">⏳ En attente de validation</span>';
+  } else {
+    statutEl.innerHTML = '<span class="badge-statut badge-suspendu">Suspendu</span>';
+  }
+
+  // Charger event depuis parametres
+  const { data: params } = await sb.from('parametres').select('*').limit(1).single();
+  if (!params) {
+    document.getElementById('noEvent').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('eventContent').style.display = 'block';
+  document.getElementById('evNom').textContent = params.titre || 'Événement Club 100';
+  document.getElementById('evDate').textContent = params.date_affichee || '';
+
+  const details = [params.lieu_nom, params.prix_conditions].filter(Boolean).join(' · ');
+  document.getElementById('evDetails').textContent = details;
+
+  const ouvert = params.inscriptions_ouvertes;
+  const badge  = document.getElementById('evBadge');
+  const btn    = document.getElementById('evBtn');
+
+  if (ouvert) {
+    badge.innerHTML = '<span class="badge-event-actif">● Inscriptions ouvertes</span>';
+  } else {
+    badge.innerHTML = '<span class="badge-event-ferme">Fermé</span>';
+    btn.classList.add('disabled');
+    btn.removeAttribute('href');
+  }
+});
+
+function logout() {
+  sessionStorage.removeItem('club100_user');
+  window.location.href = 'connexion.html';
+}
+</script>
+</body>
+</html>

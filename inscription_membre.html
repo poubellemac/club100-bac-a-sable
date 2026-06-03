@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adhésion — Club 100 Reims en Champagne</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --noir: #0F0F0F; --noir-soft: #1A1A1A;
+    --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+    --blanc: #F5F0E8; --gris-mid: #444;
+    --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+    --green: #2E6B3E; --green-light: #E8F4EC; --green-dark: #1A4027;
+    --red: #8B1A1A; --red-light: #FAEAEA; --red-dark: #5C0F0F;
+  }
+  body { font-family: 'Lato', sans-serif; background: var(--noir); color: var(--blanc); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem 4rem; }
+  .header { text-align: center; max-width: 540px; width: 100%; margin-bottom: 2rem; }
+  .logo-img { width: 100px; height: auto; margin-bottom: 1.25rem; filter: drop-shadow(0 0 12px rgba(201,168,76,0.3)); }
+  .header h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.6rem, 6vw, 2.2rem); font-weight: 700; color: var(--or); line-height: 1.15; margin-bottom: 0.4rem; }
+  .tagline { font-size: 14px; color: var(--or-light); opacity: 0.7; font-style: italic; }
+  .divider { width: 60px; height: 1px; background: linear-gradient(to right, transparent, var(--or), transparent); margin: 1.5rem auto; }
+  .card { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem 1.5rem; max-width: 540px; width: 100%; margin-bottom: 1.25rem; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 500; color: var(--or); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); letter-spacing: 0.05em; text-transform: uppercase; }
+  label { display: block; font-size: 12px; font-weight: 700; color: var(--or-light); margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  input[type="text"], input[type="email"], input[type="date"], input[type="tel"], textarea {
+    width: 100%; padding: 10px 14px; font-size: 15px; font-family: 'Lato', sans-serif;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--noir);
+    color: var(--blanc); outline: none; transition: border-color 0.2s; margin-bottom: 1.25rem;
+  }
+  input:focus, textarea:focus { border-color: var(--or); }
+  input::placeholder { color: rgba(245,240,232,0.25); }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+  .choice-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 10px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--noir); cursor: pointer; transition: all 0.18s;
+    font-size: 14px; font-weight: 700; font-family: 'Lato', sans-serif; color: var(--blanc);
+    text-align: center;
+  }
+  .choice-btn.selected-cot { background: rgba(201,168,76,0.15); border-color: var(--or); color: var(--or); }
+  .choice-btn.selected-pay { background: rgba(201,168,76,0.15); border-color: var(--or); color: var(--or); }
+  .choice-btn:hover { border-color: var(--or); }
+  .check-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 1rem; cursor: pointer; }
+  .check-row input[type="checkbox"] { display: none; }
+  .check-box {
+    width: 22px; height: 22px; min-width: 22px; border: 2px solid var(--border-strong);
+    border-radius: 5px; background: var(--noir); display: flex; align-items: center;
+    justify-content: center; margin-top: 2px; transition: all 0.18s;
+  }
+  .check-row input:checked + .check-box { background: var(--or); border-color: var(--or); }
+  .check-row input:checked + .check-box::after { content: '✓'; color: var(--noir); font-weight: 900; font-size: 13px; }
+  .check-text { font-size: 13px; color: var(--or-light); line-height: 1.5; }
+  .check-text strong { color: var(--blanc); }
+  .required-star { color: #E57373; }
+  .rib-box { background: rgba(201,168,76,0.08); border: 1px dashed var(--border-strong); border-radius: 10px; padding: 14px; margin-bottom: 1.25rem; font-size: 13px; color: var(--or-light); line-height: 1.8; }
+  .rib-box strong { color: var(--or); display: block; margin-bottom: 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .submit-btn { width: 100%; padding: 14px; background: var(--or); color: var(--noir); border: none; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.18s; }
+  .submit-btn:hover { background: var(--or-light); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error-msg { font-size: 13px; color: #E57373; margin-bottom: 12px; display: none; padding: 10px 14px; background: rgba(139,26,26,0.15); border: 1px solid rgba(139,26,26,0.4); border-radius: 8px; }
+  #successPanel { display: none; text-align: center; max-width: 540px; width: 100%; }
+  .success-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .success-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--or); margin-bottom: 1rem; }
+  .success-text { font-size: 14px; color: var(--or-light); line-height: 1.7; opacity: 0.8; }
+  .mention { font-size: 11px; color: var(--or-light); opacity: 0.4; text-align: center; max-width: 540px; width: 100%; margin-top: 1rem; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAgGBg8PEA8QDw8ODREQDxARGBcQEBAWFRgVEg4XEhEVFRkVGCInFRYgGhYVHSseIDAlKCgoFx8tMSwmMCInKCYBCQkJDQsNFQ4NFyYdFxUmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJjImJiYmJiYmJiYmJv/AABEIAGoAlgMBEQACEQEDEQH/xAAcAAEAAgIDAQAAAAAAAAAAAAAABQYBBwMECAL/xABLEAABAwICBAgGDwUJAQAAAAACAAMEAQUGEhETIlIHFBUhUVOS0SMyQnWUojEzNEFFYmNykaGxsrPC0iU1YXGBQ1RkZYKj0+LwJP/EABgBAQEBAQEAAAAAAAAAAAAAAAABAgME/8QAHhEBAAIBBQEBAAAAAAAAAAAAAAEREgIDEyFBMTL/2gAMAwEAAhEDEQA/AN/oCAgICAgICAgICAgICAgICAgICAgICAgICAgIOMXRrzZkHIgICAgICAgICAgICAgwqZOCRIBumcyEB6SQyV53G0cq5IoPTj/w46R7ddlC7RN1xDMbpmkyLfZm69adHX/0q2YWo114QrMHM7MuN2LoEtW1+VM14YQY8KNkrXRW0PM03m5G0mZwQtVpx5a3Pct5lQS3Jw61v1/1Jaca7RMQT6Dn1UW5tb8F7a7B96GCRh4xhulqyOsZ3ckjVo/oNMHONyVhWab6l9JS2JRYgICAgICCuTcYxQLVtm5Ld3Ioawu5BX7ziuQ1TTJkQbM38oevk9jxftWjBrO7cKFsbLS21KvLvWTi8FT5jSGCoXrhcusmmQXaRGtyMOr+ui526YUpEiQZ1zGRmXSSFuFWk7Eo7NKi271uvMiMWZh95kuls6j9iGS+2zhonUHVzWmLm10PhtdpbzSolc7Dwj2wvaZUqxnuH4eN9CubM7U+NjW7E8rJQzaZuLXW288/+0tU5WnLXieJJ5mXhz7hbLnZLnUotNrDoICAgINWYovzVW5UuYR8SjPcXbZaPLrnR3/4LZp7aWu/C3cHB1UXJa2NyKNB9fRpWJdPijSJBuVzmRmXSSDgQEQQEBARRARBB37ZeJEY88Z9yOXS2dRQbCtPC8Z1ELrHYnh1uTI+P8iBBvjDk4mnwja05DD8aklg3K7WXm0h9HOtyxHS5LEksoCAg86cJpfsZrzvL/EcW9RtNHkubprYVGwrHCtrMWC7NYo8M2bIZcdI3w1LTWp2wyeye3UufN0IIOLa2a22e/lzGxMiNgfxXKPZ/uAjJa7a05bro+Y6XWDg5K7uudOjn2UQWdnDkUbtKYpF4w0xbyfBnO/tO8nA/SmwWbx6oIHHNsZYci1bj8TJ+E264xU3K6t3Oej2zapmCgFlLeQcfB9bYkmfHYmC4YOnlpRre97P8T5vOjTkwxDj0ZuMt+OErijbOVpwnBHM9I1e3kqJVy/zQS1cMxKXVxvVHxYbfWfqs/8Al3G9Vm8bJm2d7QjKGxZCj6u3yY7QRuNxjI2hIyESakmxs56kW1kQVNGhB6uwZ8A+a3vsBblz1dNm6ViSGUBAQec+E/8AcsfzpL/FNa3F2fjSCxDXrCqti2EoMiJACW+yyEGbIcebcq5mcZeqz7Vk8evg6joQdHDoMvwJ8UpUWGbsqI4HGTcEcgUe0+IBb4IhhsGOL3SAcqKy4/xbVuOmdGC4s+VT2snleTVETMS+xzvE9wJQNNu292M2+WsAc9IQMNnveMKCAxtMBziYUkBOdYh6t54amQkfGTcptnznlAwHSg6eAprTFygvPFqmmnwIiJB38Kusmxc4hyGYxSwjao3+ZvSzJ1mQz8jZQSp3yJW7u117eoO38R12hzJm5K4rrN7Jn+pBDYwkNCzbojT4SaxI7ombPteZ2Sb+gK+V7KCno0IPVuC/gHzW9+Ract39NnKL4yoCAg858J/7lj+dJf4prW4uz8aQWIa9YVUQEQQEFiw1hopWtecLi8SMOd56vk/EDfeLyRREbcpguHWrYapsdkA3R/V0kgj0UQEBFEHq3BfwD5re/ItOW7+mzlF8ZUBAQafxDhUZkeVaSJtqS3JOXGzf2gFp0fbUarpMs7fTRd0tc63+Dkwga0e+5HbL19C5TD0ZIvlcuqi+jMdyjM6Tlc+qiejsdyU5zoOVy6qJ6Ox3LTocrl1UT0djuQY5XLqono7f6UE9d8YVqAxYoCEUMhZHAAtY6HsvVDRlDNuigguVy6qJ6Ox3IHK5dVE9HY7kDlguqiejsdyGVnKxdVE9HY7lDGzlc+qiejsdyjOFLHYsDXG61GjUUWWvfd1OrD/ulHx6Hw7GCsqO2wWdi2wuLZ/JJ08n6FplfkBAQEEXdbKxKDI+1Q8vsV8ofml7yRLOrpAv4ZltjkYlBKa6m4BrR7fjLfRp1NeX/AVsd91wJNmc62N4WPp/j/4VKajcUy48CcvLrbe+xc2vkzoJJTpGpr662GTELLJYejl8oFVkRiKIggICCwWTBdwnV/8AmivOjvZK5e0hjS/w+BgGMpXWexE+SY8I6lGVL/h7BsZnLyfac1f7xc/+LxvurVOPNa4hhE3vd8pySPVN+CY/qI+P/VQytY4UJtkBbZAGgHyR9hRp2kBAQEBAQEFdmYOhulrBCsZ3fjFVo/UQdCVZrgI5NbFujW5MZyn2w2a/6qLTMdKLecE2d33ZbZVoPfY2mvUzD9SOkb1Kq5wGtP10226RZI9Dldr1FMDkdBvgAuta6CKKA72t0/VoTE5EpG4HLbGL9o3dsy6qNozfmL1UwORdbJhSGz+77I46XXXDY+/tfRRXGjkW4MOTXuaVN1QdVBHVD267StuNSk7VhuJG52Y7YFv+MfbPnUmSk0suggICAgICAgICAg+dKqzBoRidCFn4VhP87sVgy6clBLtBzq5mLpVwBA99pwqbpSJGX76ZmKXgWKNH9oYZZ+YFKKZmKR0KWUyltUJZQgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg//2Q==" alt="Club 100" class="logo-img" />
+  <h1>Bulletin d'adhésion</h1>
+  <p class="tagline">Club 100 Reims en Champagne — 2026</p>
+  <div class="divider"></div>
+</div>
+
+<!-- FORMULAIRE -->
+<div id="formPanel" style="width:100%;max-width:540px;">
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <!-- INFOS PERSONNELLES -->
+  <div class="card">
+    <div class="card-title">📋 Informations personnelles</div>
+    <div class="two-col">
+      <div>
+        <label>Nom <span class="required-star">*</span></label>
+        <input type="text" id="nom" placeholder="Dupont" />
+      </div>
+      <div>
+        <label>Prénom <span class="required-star">*</span></label>
+        <input type="text" id="prenom" placeholder="Jean" />
+      </div>
+    </div>
+    <label>Date de naissance <span class="required-star">*</span></label>
+    <input type="date" id="date_naissance" />
+    <label>Adresse <span class="required-star">*</span></label>
+    <input type="text" id="adresse" placeholder="12 rue de la Paix, 51100 Reims" />
+    <div class="two-col">
+      <div>
+        <label>Téléphone <span class="required-star">*</span></label>
+        <input type="tel" id="telephone" placeholder="06 12 34 56 78" />
+      </div>
+      <div>
+        <label>Email <span class="required-star">*</span></label>
+        <input type="email" id="email" placeholder="jean@mail.com" />
+      </div>
+    </div>
+    <label>Parrain (optionnel)</label>
+    <input type="text" id="parrain" placeholder="Nom du parrain" style="margin-bottom:0;" />
+  </div>
+
+  <!-- COTISATION -->
+  <div class="card">
+    <div class="card-title">💳 Cotisation annuelle <span class="required-star">*</span></div>
+    <p style="font-size:13px;color:var(--or-light);opacity:0.7;margin-bottom:1rem;">Valable du 01/01/2026 au 31/12/2026 — non remboursable</p>
+    <div class="choice-row">
+      <div class="choice-btn" id="cot30" onclick="selectCotisation('30')">
+        <span style="font-size:1.4rem;">🍽</span>
+        <span>30 €</span>
+        <span style="font-size:11px;opacity:0.7;font-weight:400;">Hors repas</span>
+      </div>
+      <div class="choice-btn" id="cot150" onclick="selectCotisation('150')">
+        <span style="font-size:1.4rem;">🥂</span>
+        <span>150 €</span>
+        <span style="font-size:11px;opacity:0.7;font-weight:400;">4 repas inclus</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE DE PAIEMENT -->
+  <div class="card">
+    <div class="card-title">🏦 Mode de règlement <span class="required-star">*</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:1.25rem;">
+      <div class="choice-btn" id="pay-especes" onclick="selectPaiement('especes')">💵<br><span style="font-size:12px;">Espèces</span></div>
+      <div class="choice-btn" id="pay-cheque" onclick="selectPaiement('cheque')">📝<br><span style="font-size:12px;">Chèque</span></div>
+      <div class="choice-btn" id="pay-virement" onclick="selectPaiement('virement')">🏦<br><span style="font-size:12px;">Virement</span></div>
+    </div>
+    <div class="rib-box">
+      <strong>RIB — Crédit Agricole</strong>
+      Titulaire : ASSOC. CLUB 100 REIMS EN CHAMPA<br>
+      IBAN : FR76 1020 6000 0198 7559 9124 403<br>
+      <span style="font-size:11px;opacity:0.6;">Joindre le justificatif par mail : club100reims@gmail.com</span>
+    </div>
+  </div>
+
+  <!-- ENGAGEMENTS -->
+  <div class="card">
+    <div class="card-title">✍️ Engagements <span class="required-star">*</span> obligatoires</div>
+
+    <label class="check-row" id="row_reglement">
+      <input type="checkbox" id="reglement_accepte" />
+      <div class="check-box"></div>
+      <span class="check-text"><strong>Règlement intérieur</strong> — Je déclare avoir reçu et lu le règlement intérieur. <span class="required-star">*</span></span>
+    </label>
+
+    <label class="check-row" id="row_conduite">
+      <input type="checkbox" id="engagement_conduite" />
+      <div class="check-box"></div>
+      <span class="check-text"><strong>Engagement conduite</strong> — J'atteste sur l'honneur de respecter les règles concernant l'état alcoolique (art. R234-1 du code de la route) et les stupéfiants (art. L235-1 du code de la route), dans mon intérêt, celui des autres et de l'association. <span class="required-star">*</span></span>
+    </label>
+
+    <label class="check-row" id="row_image">
+      <input type="checkbox" id="droit_image" />
+      <div class="check-box"></div>
+      <span class="check-text"><strong>Droit à l'image</strong> — J'autorise l'Association Club 100 REIMS à me photographier ou me filmer dans le cadre des événements ou activités. J'accepte l'utilisation non commerciale de mon image pour la promotion de l'Association (site internet, réseaux sociaux, supports papier ou numériques), pour la durée de vie des documents ou de l'Association. <span class="required-star">*</span></span>
+    </label>
+  </div>
+
+  <div class="card" style="background:rgba(201,168,76,0.05);border-color:var(--border-strong);">
+    <p style="font-size:13px;color:var(--or-light);text-align:center;line-height:1.7;">
+      Après validation, vous recevrez un <strong style="color:var(--or);">mail de confirmation</strong> avec vos identifiants de connexion.<br>
+      Votre compte sera activé après réception du règlement.
+    </p>
+  </div>
+
+  <div style="max-width:540px;width:100%;">
+    <button class="submit-btn" onclick="soumettre()">Envoyer ma demande d'adhésion</button>
+  </div>
+</div>
+
+<!-- SUCCÈS -->
+<div id="successPanel">
+  <div class="success-icon">🎉</div>
+  <div class="success-title">Demande envoyée !</div>
+  <div class="card">
+    <p class="success-text">
+      Votre bulletin d'adhésion a bien été reçu.<br><br>
+      Vous allez recevoir un <strong style="color:var(--or);">mail de confirmation</strong> avec vos identifiants de connexion.<br><br>
+      Votre compte sera activé par l'administrateur après réception de votre règlement.<br><br>
+      <strong style="color:var(--or);">Bienvenue au Club 100 Reims en Champagne ! 🥂</strong>
+    </p>
+  </div>
+</div>
+
+<p class="mention">Club 100 Reims en Champagne — C1 Allée Alberto Santos Dumont, 51100 Reims<br>club100reims@gmail.com — Président : Pierre Bernardin</p>
+
+<script>
+  const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+  const EJS_PUBLIC   = "JMg0VaPvHEtJPKJHY";
+  const EJS_SERVICE  = "service_2jxbi28";
+  const EJS_TEMPLATE = "template_865wa08"; // Inscription Membre Club100
+
+  let sb, cotisation = null, paiement = null;
+
+  window.addEventListener('DOMContentLoaded', () => {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    emailjs.init(EJS_PUBLIC);
+  });
+
+  function selectCotisation(val) {
+    cotisation = val;
+    document.getElementById('cot30').classList.toggle('selected-cot', val === '30');
+    document.getElementById('cot150').classList.toggle('selected-cot', val === '150');
+  }
+
+  function selectPaiement(val) {
+    paiement = val;
+    ['especes','cheque','virement'].forEach(p => {
+      document.getElementById('pay-' + p).classList.toggle('selected-pay', p === val);
+    });
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function soumettre() {
+    document.getElementById('errorMsg').style.display = 'none';
+
+    const nom      = document.getElementById('nom').value.trim();
+    const prenom   = document.getElementById('prenom').value.trim();
+    const ddn      = document.getElementById('date_naissance').value;
+    const adresse  = document.getElementById('adresse').value.trim();
+    const tel      = document.getElementById('telephone').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const parrain  = document.getElementById('parrain').value.trim();
+    const regl     = document.getElementById('reglement_accepte').checked;
+    const conduite = document.getElementById('engagement_conduite').checked;
+    const image    = document.getElementById('droit_image').checked;
+
+    // Validations
+    if (!nom)      return showError('Le nom est obligatoire.');
+    if (!prenom)   return showError('Le prénom est obligatoire.');
+    if (!ddn)      return showError('La date de naissance est obligatoire.');
+    if (!adresse)  return showError('L\'adresse est obligatoire.');
+    if (!tel)      return showError('Le téléphone est obligatoire.');
+    if (!email || !email.includes('@')) return showError('L\'email est invalide.');
+    if (!cotisation) return showError('Veuillez choisir une cotisation.');
+    if (!paiement)   return showError('Veuillez choisir un mode de règlement.');
+    if (!regl)     return showError('Vous devez accepter le règlement intérieur.');
+    if (!conduite) return showError('Vous devez valider l\'engagement de conduite.');
+    if (!image)    return showError('Vous devez valider le droit à l\'image.');
+
+    const btn = document.querySelector('.submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Envoi en cours…';
+
+    const mdp = prenom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    const { error } = await sb.from('membres').insert([{
+      nom, prenom,
+      date_naissance: ddn,
+      adresse, telephone: tel, email,
+      parrain: parrain || null,
+      type_cotisation: cotisation,
+      mode_paiement: paiement,
+      reglement_accepte: regl,
+      engagement_conduite: conduite,
+      droit_image: image,
+      statut: 'en_attente',
+      mdp,
+      role: 'membre'
+    }]);
+
+    if (error) {
+      btn.disabled = false;
+      btn.textContent = 'Envoyer ma demande d\'adhésion';
+      if (error.message.includes('unique')) return showError('Cet email est déjà utilisé.');
+      return showError('Erreur : ' + error.message);
+    }
+
+    // Mail de confirmation au membre
+    try {
+      await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, {
+        to_name: prenom + ' ' + nom,
+        to_email: email,
+        login: prenom + ' ' + nom,
+        mdp: mdp,
+        cotisation: cotisation + '€',
+        paiement: paiement,
+        message: 'Votre compte est créé. Il sera activé après réception de votre règlement.'
+      });
+    } catch(e) {
+      console.error('Erreur mail:', e);
+    }
+
+    document.getElementById('formPanel').style.display = 'none';
+    document.getElementById('successPanel').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pointage – Club 100</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --noir: #0F0F0F; --noir-soft: #1A1A1A;
+    --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+    --blanc: #F5F0E8; --gris: #2A2A2A;
+    --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+    --green: #2E6B3E; --green-light: #E8F4EC; --green-dark: #1A4027;
+    --red: #8B1A1A; --red-light: #FAEAEA; --red-dark: #5C0F0F;
+    --blue: #1A4A8A; --blue-light: #E8F0FA; --blue-dark: #0F2E5C;
+    --orange: #8A4A10; --orange-light: #FEF0E0; --orange-dark: #5C2C05;
+  }
+  body { font-family: 'Lato', sans-serif; background: var(--noir); color: var(--blanc); min-height: 100vh; padding: 0; }
+
+  /* LOGIN */
+  #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem 1rem; }
+  .login-box { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 16px; padding: 2rem 1.5rem; text-align: center; width: 100%; max-width: 360px; }
+  .login-logo { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--or); margin-bottom: 0.25rem; }
+  .login-sub { font-size: 13px; color: var(--or-light); opacity: 0.6; margin-bottom: 1.5rem; }
+  .login-error { font-size: 13px; color: #E57373; margin-bottom: 10px; display: none; }
+  input[type="password"] { width: 100%; padding: 12px 14px; font-size: 16px; font-family: 'Lato', sans-serif; border: 1px solid var(--border); border-radius: 10px; background: var(--noir); color: var(--blanc); outline: none; margin-bottom: 1rem; text-align: center; letter-spacing: 0.15em; }
+  input[type="password"]:focus { border-color: var(--or); }
+  .btn-gold { width: 100%; padding: 14px; background: var(--or); color: var(--noir); border: none; border-radius: 10px; font-size: 16px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; }
+  .btn-gold:hover { background: var(--or-light); }
+
+  /* APP */
+  #appScreen { display: none; }
+  .top-bar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--noir-soft); border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .top-bar-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.1rem; }
+  .top-bar-stats { display: flex; gap: 8px; align-items: center; }
+  .stat-pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+  .stat-pill.present { background: var(--green-light); color: var(--green-dark); }
+  .stat-pill.paye    { background: var(--blue-light); color: var(--blue-dark); }
+
+  .filters { display: flex; gap: 8px; padding: 0.75rem 1rem; overflow-x: auto; border-bottom: 1px solid var(--border); background: var(--noir); }
+  .filter-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--or-light); font-size: 13px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+  .filter-btn.active { background: var(--or); color: var(--noir); border-color: var(--or); }
+
+  .search-bar { padding: 0.75rem 1rem; background: var(--noir); border-bottom: 1px solid var(--border); }
+  .search-input { width: 100%; padding: 10px 14px; font-size: 15px; font-family: 'Lato', sans-serif; border: 1px solid var(--border); border-radius: 10px; background: var(--noir-soft); color: var(--blanc); outline: none; }
+  .search-input:focus { border-color: var(--or); }
+  .search-input::placeholder { color: rgba(245,240,232,0.25); }
+
+  .list-container { padding: 0.5rem 0; }
+
+  .person-card {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(201,168,76,0.1);
+    transition: background 0.15s;
+  }
+  .person-card:active { background: rgba(201,168,76,0.05); }
+  .person-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+  .person-name { font-size: 17px; font-weight: 700; color: var(--blanc); }
+  .person-comment { font-size: 12px; color: var(--or-light); opacity: 0.6; font-style: italic; margin-bottom: 0.6rem; }
+  .person-actions { display: flex; gap: 8px; }
+  .action-btn {
+    flex: 1; padding: 10px 6px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--noir-soft); color: var(--blanc);
+    font-size: 13px; font-weight: 700; font-family: 'Lato', sans-serif;
+    cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .action-btn.active-present { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+  .action-btn.active-absent  { background: var(--red-light);   border-color: var(--red);   color: var(--red-dark); }
+  .action-btn.active-paye    { background: var(--blue-light);  border-color: var(--blue);  color: var(--blue-dark); }
+  .action-btn.active-impaye  { background: var(--orange-light);border-color: var(--orange);color: var(--orange-dark); }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--or-light); opacity: 0.4; font-style: italic; }
+
+  .refresh-btn { position: fixed; bottom: 1.5rem; right: 1rem; width: 52px; height: 52px; border-radius: 50%; background: var(--or); color: var(--noir); border: none; font-size: 22px; cursor: pointer; box-shadow: 0 4px 16px rgba(201,168,76,0.4); display: flex; align-items: center; justify-content: center; z-index: 40; transition: transform 0.2s; }
+  .refresh-btn:active { transform: rotate(180deg) scale(0.9); }
+
+  .toast { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--or); color: var(--noir); padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 700; transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-left: 6px; }
+  .sync-dot.syncing { background: var(--or); animation: pulse 0.8s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">Club 100 — Pointage</div>
+    <div class="login-sub">Accès réservé aux organisateurs</div>
+    <input type="password" id="pwdInput" placeholder="••••••" />
+    <div class="login-error" id="loginError">Mot de passe incorrect.</div>
+    <button class="btn-gold" onclick="checkLogin()">Entrer</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <div class="top-bar">
+    <div>
+      <div class="top-bar-title">📋 Pointage <span class="sync-dot" id="syncDot"></span></div>
+    </div>
+    <div class="top-bar-stats">
+      <div class="stat-pill present" id="statPresent">0 présents</div>
+      <div class="stat-pill paye" id="statPaye">0 payés</div>
+      <button onclick="showAddPanel()" style="background:var(--or);color:var(--noir);border:none;border-radius:8px;padding:6px 12px;font-weight:700;font-size:14px;cursor:pointer;">➕</button>
+      <button onclick="exportMail()" style="background:transparent;color:var(--or);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-weight:700;font-size:14px;cursor:pointer;">📧</button>
+    </div>
+  </div>
+
+  <!-- PANNEAU AJOUT -->
+  <div id="addPanel" style="display:none;padding:0.75rem 1rem;background:var(--noir-soft);border-bottom:1px solid var(--border-strong);">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="addNomInput" placeholder="Nom et prénom" style="flex:1;padding:10px 14px;font-size:15px;font-family:'Lato',sans-serif;border:1px solid var(--border);border-radius:10px;background:var(--noir);color:var(--blanc);outline:none;" />
+      <button onclick="addPersonne()" style="padding:10px 16px;background:var(--or);color:var(--noir);border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;">OK</button>
+      <button onclick="hideAddPanel()" style="padding:10px 12px;background:transparent;color:var(--or-light);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer;">✕</button>
+    </div>
+    <div id="addError" style="display:none;font-size:13px;color:#E57373;margin-top:6px;"></div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" class="search-input" id="searchInput" placeholder="🔍 Rechercher un nom..." oninput="renderList()" />
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="tous" onclick="setFilter('tous', this)">Tous</button>
+    <button class="filter-btn" data-filter="presents" onclick="setFilter('presents', this)">✅ Présents</button>
+    <button class="filter-btn" data-filter="absents" onclick="setFilter('absents', this)">❌ Absents</button>
+    <button class="filter-btn" data-filter="non_pointes" onclick="setFilter('non_pointes', this)">⏳ Non pointés</button>
+    <button class="filter-btn" data-filter="non_payes" onclick="setFilter('non_payes', this)">💰 Non payés</button>
+  </div>
+
+  <div class="list-container" id="listContainer"></div>
+
+  <button class="refresh-btn" onclick="loadData()" title="Actualiser">↻</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+  const ADMIN_PWD   = "admin";
+  const POINTAGE_KEY = "club100_pointage";
+  const EJS_PUBLIC  = "JMg0VaPvHEtJPKJHY";
+  const EJS_SERVICE = "service_2jxbi28";
+  const EJS_TEMPLATE= "template_87zbs1w";
+
+  let sb = null;
+  let participants = [];
+  let pointage = {}; // { id: { present: bool|null, paye: bool|null } }
+  let currentFilter = 'tous';
+
+  // ─── LOGIN ────────────────────────────────────────────────
+  function checkLogin() {
+    if (document.getElementById('pwdInput').value === ADMIN_PWD) {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appScreen').style.display = 'block';
+      init();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') checkLogin();
+  });
+
+  // ─── INIT ────────────────────────────────────────────────
+  async function init() {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    emailjs.init(EJS_PUBLIC);
+    loadPointageLocal();
+    await loadData();
+    setInterval(loadData, 30000);
+  }
+
+  async function exportMail() {
+    if (!confirm('Envoyer le pointage par mail à poubellemac@free.fr ?')) return;
+    showToast('📧 Envoi en cours...');
+
+    const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const nbPresent = participants.filter(p => pointage[p.id]?.present === true).length;
+    const nbPaye    = participants.filter(p => pointage[p.id]?.paye === true).length;
+
+    let texte = `POINTAGE CLUB 100 — ${date}\n`;
+    texte += `${'='.repeat(40)}\n`;
+    texte += `Présents : ${nbPresent} / ${participants.length}\n`;
+    texte += `Payés    : ${nbPaye}\n`;
+    texte += `${'='.repeat(40)}\n\n`;
+
+    const tries = participants.slice().sort((a,b) => a.nom.localeCompare(b.nom));
+    tries.forEach(p => {
+      const pt = pointage[p.id] || {};
+      const present = pt.present === true ? '✅' : pt.present === false ? '❌' : '⏳';
+      const paye = pt.paye ? '💰' : '  ';
+      texte += `${present} ${paye}  ${p.nom}\n`;
+    });
+
+    try {
+      await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { liste: texte });
+      showToast('✅ Mail envoyé !');
+    } catch(e) {
+      showToast('❌ Erreur envoi mail');
+      console.error(e);
+    }
+  }
+
+  function loadPointageLocal() {
+    const saved = localStorage.getItem(POINTAGE_KEY);
+    if (saved) { try { pointage = JSON.parse(saved); } catch(e) {} }
+  }
+  function savePointageLocal() {
+    localStorage.setItem(POINTAGE_KEY, JSON.stringify(pointage));
+  }
+
+  async function loadData() {
+    setSyncing(true);
+    const { data, error } = await sb.from('inscriptions').select('*').order('nom', { ascending: true });
+    setSyncing(false);
+    if (error) { showToast('❌ Erreur de connexion'); return; }
+    // Ne garder que les inscrits "Je viens"
+    participants = (data || []).filter(p => p.presence === true);
+    renderList();
+    updateStats();
+  }
+
+  // ─── POINTAGE ────────────────────────────────────────────
+  function togglePresent(id) {
+    if (!pointage[id]) pointage[id] = {};
+    const cur = pointage[id].present;
+    pointage[id].present = cur === true ? null : true;
+    savePointageLocal(); renderList(); updateStats();
+    showToast(pointage[id].present === true ? '✅ Présent' : '↩ Annulé');
+  }
+
+  function toggleAbsent(id) {
+    if (!pointage[id]) pointage[id] = {};
+    const cur = pointage[id].present;
+    pointage[id].present = cur === false ? null : false;
+    savePointageLocal(); renderList(); updateStats();
+    showToast(pointage[id].present === false ? '❌ Absent noté' : '↩ Annulé');
+  }
+
+  function togglePaye(id) {
+    if (!pointage[id]) pointage[id] = {};
+    pointage[id].paye = !pointage[id].paye;
+    savePointageLocal(); renderList(); updateStats();
+    showToast(pointage[id].paye ? '💰 Payé !' : '↩ Paiement annulé');
+  }
+
+  // ─── FILTRE ──────────────────────────────────────────────
+  function setFilter(f, el) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    renderList();
+  }
+
+  // ─── RENDER ──────────────────────────────────────────────
+  function renderList() {
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    let list = [...participants];
+
+    if (search) list = list.filter(p => p.nom.toLowerCase().includes(search));
+
+    if (currentFilter === 'presents')    list = list.filter(p => pointage[p.id]?.present === true);
+    if (currentFilter === 'absents')     list = list.filter(p => pointage[p.id]?.present === false);
+    if (currentFilter === 'non_pointes') list = list.filter(p => pointage[p.id]?.present == null);
+    if (currentFilter === 'non_payes')   list = list.filter(p => !pointage[p.id]?.paye);
+
+    const container = document.getElementById('listContainer');
+    if (list.length === 0) {
+      container.innerHTML = '<div class="empty-state">Aucune personne dans cette catégorie.</div>';
+      return;
+    }
+
+    container.innerHTML = list.map(p => {
+      const pt = pointage[p.id] || {};
+      const isPresent = pt.present === true;
+      const isAbsent  = pt.present === false;
+      const isPaye    = !!pt.paye;
+      const comment = p.commentaire ? '<div class="person-comment">💬 ' + esc(p.commentaire) + '</div>' : '';
+
+      let statusBadge = '';
+      if (isPresent) statusBadge = '<span style="font-size:11px;color:var(--green);font-weight:700;">✅ Présent</span>';
+      else if (isAbsent) statusBadge = '<span style="font-size:11px;color:var(--red);font-weight:700;">❌ Absent</span>';
+      else statusBadge = '<span style="font-size:11px;color:var(--or-light);opacity:0.4;">⏳ Non pointé</span>';
+
+      const corbeille = p.manuel ? `<button onclick="deletePersonne(${p.id}, '${esc(p.nom)}')" style="background:transparent;border:none;cursor:pointer;font-size:16px;opacity:0.4;padding:2px 4px;" title="Supprimer">🗑️</button>` : '';
+
+      return `<div class="person-card">
+        <div class="person-top">
+          <div class="person-name">${esc(p.nom)}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${statusBadge}
+            ${corbeille}
+          </div>
+        </div>
+        ${comment}
+        <div class="person-actions">
+          <button class="action-btn ${isPresent ? 'active-present' : ''}" onclick="togglePresent(${p.id})">✅ Présent</button>
+          <button class="action-btn ${isAbsent  ? 'active-absent'  : ''}" onclick="toggleAbsent(${p.id})">❌ Absent</button>
+          <button class="action-btn ${isPaye    ? 'active-paye'    : 'active-impaye'}" onclick="togglePaye(${p.id})">${isPaye ? '💰 Payé' : '💸 Pas payé'}</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function updateStats() {
+    const inscrits = participants;
+    const nbPresent = inscrits.filter(p => pointage[p.id]?.present === true).length;
+    const nbPaye    = inscrits.filter(p => pointage[p.id]?.paye === true).length;
+    document.getElementById('statPresent').textContent = nbPresent + ' présent' + (nbPresent > 1 ? 's' : '');
+    document.getElementById('statPaye').textContent    = nbPaye    + ' payé' + (nbPaye > 1 ? 's' : '');
+  }
+
+  function setSyncing(val) {
+    const dot = document.getElementById('syncDot');
+    if (val) dot.classList.add('syncing'); else dot.classList.remove('syncing');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  function showAddPanel() {
+    document.getElementById('addPanel').style.display = 'block';
+    document.getElementById('addNomInput').focus();
+    document.getElementById('addError').style.display = 'none';
+    document.getElementById('addNomInput').value = '';
+  }
+  function hideAddPanel() {
+    document.getElementById('addPanel').style.display = 'none';
+  }
+
+  async function addPersonne() {
+    const nom = document.getElementById('addNomInput').value.trim();
+    const errEl = document.getElementById('addError');
+    errEl.style.display = 'none';
+    if (!nom) { errEl.textContent = 'Merci de saisir un nom.'; errEl.style.display = 'block'; return; }
+    const doublon = participants.find(p => p.nom.toLowerCase() === nom.toLowerCase());
+    if (doublon) { errEl.textContent = '"' + nom + '" est déjà dans la liste.'; errEl.style.display = 'block'; return; }
+    const { error } = await sb.from('inscriptions').insert([{ nom, presence: true, manuel: true, created_at: new Date().toISOString() }]);
+    if (error) { errEl.textContent = 'Erreur : ' + error.message; errEl.style.display = 'block'; return; }
+    hideAddPanel();
+    await loadData();
+    showToast('✅ ' + nom + ' ajouté !');
+  }
+
+  async function deletePersonne(id, nom) {
+    if (!confirm('Supprimer "' + nom + '" de la liste ?')) return;
+    const { error } = await sb.from('inscriptions').delete().eq('id', id);
+    if (error) { showToast('❌ Erreur suppression'); return; }
+    delete pointage[id];
+    savePointageLocal();
+    await loadData();
+    showToast('🗑️ ' + nom + ' supprimé');
+  }
+
+  function esc(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

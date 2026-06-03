@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Club 100 Les Centaures</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --noir: #0F0F0F; --noir-soft: #1A1A1A;
+    --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+    --blanc: #F5F0E8; --gris: #2A2A2A; --gris-mid: #444;
+    --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+    --green: #2E6B3E; --green-light: #E8F4EC; --green-dark: #1A4027;
+    --red: #8B1A1A; --red-light: #FAEAEA; --red-dark: #5C0F0F;
+  }
+  body { font-family: 'Lato', sans-serif; background: var(--noir); color: var(--blanc); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem 4rem; }
+  .header { text-align: center; max-width: 540px; width: 100%; margin-bottom: 2rem; }
+  .logo-img { width: 120px; height: auto; margin-bottom: 1.25rem; filter: drop-shadow(0 0 12px rgba(201,168,76,0.3)); }
+  .header h1 { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(1.8rem, 7vw, 2.6rem); font-weight: 700; color: var(--or); line-height: 1.15; margin-bottom: 0.4rem; letter-spacing: 0.02em; }
+  .tagline { font-size: 14px; color: var(--or-light); opacity: 0.7; margin-bottom: 1.5rem; font-style: italic; }
+  .event-info { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .event-pill { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--or-light); background: var(--noir-soft); border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px; text-decoration: none; cursor: default; }
+  a.event-pill { cursor: pointer; } a.event-pill:hover { border-color: var(--or); color: var(--or); }
+  .event-pill svg { width: 14px; height: 14px; stroke: var(--or); flex-shrink: 0; }
+  .price-note { margin-top: 0.75rem; font-size: 13px; color: var(--or); background: rgba(201,168,76,0.1); border: 1px dashed var(--border-strong); padding: 8px 16px; border-radius: 8px; display: block; width: 100%; max-width: 540px; text-align: center; }
+  .event-description { margin-top: 0.5rem; font-size: 13px; color: var(--or-light); opacity: 0.75; font-style: italic; text-align: center; max-width: 540px; width: 100%; }
+  .divider { width: 60px; height: 1px; background: linear-gradient(to right, transparent, var(--or), transparent); margin: 1.5rem auto; }
+  .card { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem 1.5rem; max-width: 540px; width: 100%; margin-bottom: 1.25rem; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 500; color: var(--or); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); letter-spacing: 0.05em; text-transform: uppercase; }
+  label { display: block; font-size: 12px; font-weight: 700; color: var(--or-light); margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  input[type="text"], input[type="password"], textarea { width: 100%; padding: 10px 14px; font-size: 15px; font-family: 'Lato', sans-serif; border: 1px solid var(--border); border-radius: 8px; background: var(--noir); color: var(--blanc); outline: none; transition: border-color 0.2s; margin-bottom: 1.25rem; }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus { border-color: var(--or); }
+  input::placeholder, textarea::placeholder { color: rgba(245,240,232,0.25); }
+  .choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+  .choice-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--noir); cursor: pointer; transition: all 0.18s; font-size: 14px; font-weight: 700; font-family: 'Lato', sans-serif; color: var(--blanc); }
+  .choice-btn svg { width: 26px; height: 26px; }
+  .choice-btn.yes:hover, .choice-btn.yes.selected { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+  .choice-btn.no:hover, .choice-btn.no.selected { background: var(--red-light); border-color: var(--red); color: var(--red-dark); }
+  .error-msg { font-size: 13px; color: #E57373; margin-bottom: 10px; display: none; }
+  .info-msg { font-size: 13px; color: var(--or); margin-bottom: 10px; display: none; padding: 8px 12px; background: rgba(201,168,76,0.1); border-radius: 6px; border: 1px solid var(--border); }
+  .submit-btn { width: 100%; padding: 13px; background: var(--or); color: var(--noir); border: none; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.18s, transform 0.1s; }
+  .submit-btn:hover { background: var(--or-light); } .submit-btn:active { transform: scale(0.98); } .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; max-width: 540px; width: 100%; }
+  .counter-card { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
+  .counter-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--or-light); opacity: 0.5; margin-bottom: 4px; }
+  .counter-num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; line-height: 1; }
+  .counter-num.total { color: var(--or); } .counter-num.yes { color: #4CAF50; } .counter-num.no { color: #E57373; }
+  .list-card { padding: 1.25rem 1.5rem; }
+  .empty-msg { font-size: 14px; color: var(--or-light); opacity: 0.35; text-align: center; padding: 1.5rem 0; font-style: italic; }
+  .participant-item { display: flex; align-items: flex-start; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .participant-item:last-child { border-bottom: none; }
+  .participant-name { font-size: 15px; font-weight: 700; color: var(--blanc); }
+  .participant-time { font-size: 11px; color: var(--or-light); opacity: 0.4; margin-top: 2px; }
+  .participant-comment { font-size: 12px; color: var(--or-light); opacity: 0.6; margin-top: 3px; font-style: italic; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; white-space: nowrap; letter-spacing: 0.05em; text-transform: uppercase; flex-shrink: 0; }
+  .badge.yes { background: var(--green-light); color: var(--green-dark); } .badge.no { background: var(--red-light); color: var(--red-dark); }
+  .badge svg { width: 12px; height: 12px; }
+  .status-msg { font-size: 12px; color: var(--or); opacity: 0.6; text-align: center; padding: 0.5rem 0; font-style: italic; }
+  .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--or); color: var(--noir); padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 700; transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .admin-link { font-size: 11px; color: var(--or); opacity: 0.25; text-decoration: none; display: block; text-align: center; margin-top: 2rem; }
+  .admin-link:hover { opacity: 0.6; }
+  #inactifBanner { display: none; max-width: 540px; width: 100%; background: rgba(201,168,76,0.08); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 1.5rem; text-align: center; font-size: 15px; color: var(--or-light); margin-bottom: 1.5rem; }
+  /* ADMIN */
+  .admin-section { max-width: 540px; width: 100%; }
+  .admin-header { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--or); text-align: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .admin-field { margin-bottom: 1rem; }
+  .admin-field label { margin-bottom: 6px; }
+  .admin-field input, .admin-field textarea { margin-bottom: 0; }
+  .admin-save-btn { width: 100%; padding: 12px; background: var(--or); color: var(--noir); border: none; border-radius: 10px; font-size: 14px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.18s; margin-top: 0.5rem; }
+  .admin-save-btn:hover { background: var(--or-light); }
+  .admin-danger-btn { width: 100%; padding: 12px; background: transparent; color: #E57373; border: 1px solid #E57373; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: all 0.18s; margin-top: 0.5rem; }
+  .admin-danger-btn:hover { background: var(--red-light); color: var(--red-dark); border-color: var(--red-dark); }
+  .admin-back-btn { width: 100%; padding: 10px; background: transparent; color: var(--or-light); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 0.75rem; }
+  .admin-csv-btn { width: 100%; padding: 10px; background: rgba(201,168,76,0.1); color: var(--or); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 0.5rem; }
+  .admin-list-item { display: flex; align-items: flex-start; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .admin-list-item:last-child { border-bottom: none; }
+  .switch-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .switch-row label { margin-bottom: 0; font-size: 14px; }
+  .switch { position: relative; display: inline-block; width: 46px; height: 26px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--gris-mid); transition: .3s; border-radius: 26px; }
+  .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background: white; transition: .3s; border-radius: 50%; }
+  input:checked + .slider { background: var(--green); }
+  input:checked + .slider:before { transform: translateX(20px); }
+  #loginPanel { display: none; max-width: 360px; width: 100%; flex-direction: column; align-items: center; }
+  .login-box { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 14px; padding: 2rem 1.5rem; text-align: center; width: 100%; }
+  .login-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.2rem; margin-bottom: 1.5rem; }
+  .login-error { font-size: 13px; color: #E57373; margin-bottom: 10px; display: none; }
+  #adminPanel { display: none; flex-direction: column; align-items: center; width: 100%; }
+</style>
+</head>
+<body>
+
+<!-- ===== VUE PUBLIQUE ===== -->
+<div id="publicPanel">
+  <div class="header">
+    <img src="data:image/jpeg;base64,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" alt="Club 100" class="logo-img" />
+    <h1 id="evTitre">Côte de Bœuf & Frites 🍖</h1>
+    <p class="tagline" id="evTagline">L'édition annuelle tant attendue vous attend !</p>
+    <div class="event-info">
+      <div class="event-pill">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="evDate">19 juin 2025</span>
+      </div>
+      <a id="evLieuPill" class="event-pill" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span id="evLieu">Distillerie Guillon – Louvois 🇫🇷</span>
+      </a>
+    </div>
+    <p class="event-description" id="evDescription"></p>
+    <div class="price-note"><span id="evPrix">⚠️ 30 € PAR PERSONNE + UNE BOUTEILLE</span></div>
+    <div class="price-note" style="margin-top:6px;font-size:0.85em;letter-spacing:0.03em;">🏦 RIB : FR76 1020 6000 0198 7559 9124 403</div>
+  </div>
+
+  <div id="inactifBanner">🚫 Les inscriptions sont actuellement fermées.<br>Revenez bientôt !</div>
+
+  <div id="formulaireSection">
+    <div class="divider"></div>
+    <div class="card">
+      <div class="card-title">Votre réservation</div>
+      <label for="nomInput">Votre nom et prénom</label>
+      <input type="text" id="nomInput" placeholder="Ex: Jean Dupont" />
+      <label for="commentInput">Commentaire (optionnel)</label>
+      <textarea id="commentInput" placeholder="Ex: Je viens avec un invité, allergie, message..."></textarea>
+      <label>Votre réponse</label>
+      <div class="choice-row">
+        <button class="choice-btn yes" id="btnOui" onclick="selectChoice(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Je viens !
+        </button>
+        <button class="choice-btn no" id="btnNon" onclick="selectChoice(false)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Je ne viens pas
+        </button>
+      </div>
+      <div class="error-msg" id="errorMsg">Merci de renseigner votre nom et de choisir une réponse.</div>
+      <div class="info-msg" id="infoMsg"></div>
+      <button class="submit-btn" id="submitBtn" onclick="submitForm()">Envoyer ma réponse</button>
+      <p class="status-msg" id="statusMsg"></p>
+    </div>
+  </div>
+
+  <div class="counters">
+    <div class="counter-card"><div class="counter-label">Total</div><div class="counter-num total" id="cTotal">0</div></div>
+    <div class="counter-card"><div class="counter-label">Présents</div><div class="counter-num yes" id="cOui">0</div></div>
+    <div class="counter-card"><div class="counter-label">Absents</div><div class="counter-num no" id="cNon">0</div></div>
+  </div>
+
+  <div class="card list-card">
+    <div class="card-title">Réponses reçues</div>
+    <div id="listContainer"><p class="empty-msg">Aucune réponse pour l'instant.</p></div>
+  </div>
+
+  <a href="#" class="admin-link" onclick="showLogin(); return false;">⚙ admin</a>
+</div>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginPanel">
+  <div class="login-box">
+    <div class="login-title">🔐 Accès admin</div>
+    <input type="password" id="pwdInput" placeholder="Mot de passe" />
+    <div class="login-error" id="loginError">Mot de passe incorrect.</div>
+    <button class="submit-btn" onclick="checkLogin()">Entrer</button>
+    <button class="admin-back-btn" style="margin-top:0.75rem;" onclick="showPublic()">← Retour</button>
+  </div>
+</div>
+
+<!-- ===== ADMIN ===== -->
+<div id="adminPanel">
+  <div class="admin-section">
+    <div class="admin-header">⚙ Administration</div>
+
+    <div class="card">
+      <div class="card-title">Événement en cours</div>
+      <div class="switch-row">
+        <label>Inscriptions ouvertes</label>
+        <label class="switch"><input type="checkbox" id="evActif" checked><span class="slider"></span></label>
+      </div>
+      <div class="admin-field"><label>Titre</label><input type="text" id="adminTitre" /></div>
+      <div class="admin-field"><label>Tagline</label><input type="text" id="adminTagline" /></div>
+      <div class="admin-field"><label>Date (texte affiché)</label><input type="text" id="adminDate" /></div>
+      <div class="admin-field"><label>Lieu (nom affiché)</label><input type="text" id="adminLieu" /></div>
+      <div class="admin-field"><label>Adresse (pour Google Maps)</label><input type="text" id="adminAdresse" /></div>
+      <div class="admin-field"><label>Description courte</label><textarea id="adminDescription"></textarea></div>
+      <div class="admin-field"><label>Prix / conditions</label><input type="text" id="adminPrix" /></div>
+      <button class="admin-save-btn" onclick="saveEvent()">💾 Enregistrer</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Inscriptions</div>
+      <div class="counters" style="max-width:100%;">
+        <div class="counter-card"><div class="counter-label">Total</div><div class="counter-num total" id="aCTotal">0</div></div>
+        <div class="counter-card"><div class="counter-label">Présents</div><div class="counter-num yes" id="aCOui">0</div></div>
+        <div class="counter-card"><div class="counter-label">Absents</div><div class="counter-num no" id="aCNon">0</div></div>
+      </div>
+      <div id="adminList" style="margin-top:1rem;"></div>
+      <button class="admin-csv-btn" onclick="exportCSV()">📥 Exporter en CSV</button>
+      <button class="admin-danger-btn" onclick="resetInscriptions()">🗑 Réinitialiser les inscriptions</button>
+    </div>
+
+    <button class="admin-back-btn" onclick="showPublic()">← Retour au site</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+  const ADMIN_PWD   = "admin";
+  const EV_KEY      = "club100_event_v2";
+
+  let sb = null, choice = null, participants = [];
+  let ev = {
+    titre: "Côte de Bœuf & Frites 🍖",
+    tagline: "L'édition annuelle tant attendue vous attend !",
+    date: "19 juin 2025",
+    lieu: "Distillerie Guillon – Louvois 🇫🇷",
+    adresse: "Hameau de Vertuelle, 51150 Louvois",
+    description: "",
+    prix: "⚠️ 30 € PAR PERSONNE + UNE BOUTEILLE",
+    actif: true
+  };
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await loadParametres();
+    applyEvent();
+    await loadParticipants();
+    document.getElementById('statusMsg').textContent = '✅ Données synchronisées en temps réel.';
+    setInterval(loadParticipants, 30000);
+  });
+
+  async function loadParametres() {
+    if (!sb) return;
+    const { data, error } = await sb.from('parametres').select('*').eq('id', 1).single();
+    if (error || !data) return;
+    ev = {
+      titre: data.titre || ev.titre,
+      tagline: data.tagline || ev.tagline,
+      date: data.date_affichee || ev.date,
+      lieu: data.lieu_nom || ev.lieu,
+      adresse: data.lieu_adresse || ev.adresse,
+      description: data.description || ev.description,
+      prix: data.prix_conditions || ev.prix,
+      actif: data.inscriptions_ouvertes !== null ? data.inscriptions_ouvertes : ev.actif
+    };
+  }
+
+  function applyEvent() {
+    document.getElementById('evTitre').textContent = ev.titre;
+    document.getElementById('evTagline').textContent = ev.tagline;
+    document.getElementById('evDate').textContent = ev.date;
+    document.getElementById('evLieu').textContent = ev.lieu;
+    document.getElementById('evDescription').textContent = ev.description;
+    document.getElementById('evPrix').textContent = ev.prix;
+    const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.adresse);
+    document.getElementById('evLieuPill').href = mapsUrl;
+    document.getElementById('inactifBanner').style.display = ev.actif ? 'none' : 'block';
+    document.getElementById('formulaireSection').style.display = ev.actif ? 'block' : 'none';
+  }
+
+  async function loadParticipants() {
+    if (!sb) return;
+    const { data, error } = await sb.from('inscriptions').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    participants = data || [];
+    render(); renderAdminList();
+  }
+
+  function selectChoice(val) {
+    choice = val;
+    document.getElementById('btnOui').classList.toggle('selected', val === true);
+    document.getElementById('btnNon').classList.toggle('selected', val === false);
+  }
+
+  async function submitForm() {
+    const nom = document.getElementById('nomInput').value.trim();
+    const commentaire = document.getElementById('commentInput').value.trim();
+    const err = document.getElementById('errorMsg');
+    const info = document.getElementById('infoMsg');
+    const btn = document.getElementById('submitBtn');
+    err.style.display = 'none'; info.style.display = 'none';
+    if (!nom || choice === null) { err.style.display = 'block'; return; }
+    const doublon = participants.find(p => p.nom.toLowerCase() === nom.toLowerCase());
+    if (doublon) {
+      info.textContent = '⚠️ "' + nom + '" est déjà inscrit(e) (' + (doublon.presence ? 'présent' : 'absent') + '). Contactez l\'organisateur pour modifier.';
+      info.style.display = 'block'; return;
+    }
+    btn.disabled = true; btn.textContent = 'Envoi…';
+    const entry = { nom, presence: choice, commentaire: commentaire || null, created_at: new Date().toISOString() };
+    const { error } = await sb.from('inscriptions').insert([entry]);
+    if (error) { alert('Erreur : ' + error.message); btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; return; }
+    await loadParticipants();
+    document.getElementById('nomInput').value = '';
+    document.getElementById('commentInput').value = '';
+    choice = null;
+    document.getElementById('btnOui').classList.remove('selected');
+    document.getElementById('btnNon').classList.remove('selected');
+    btn.disabled = false; btn.textContent = 'Envoyer ma réponse';
+    showToast(entry.presence ? '🎉 À bientôt !' : '😢 Dommage, à une prochaine fois !');
+  }
+
+  function render() {
+    const total = participants.length, oui = participants.filter(p => p.presence).length;
+    document.getElementById('cTotal').textContent = total;
+    document.getElementById('cOui').textContent = oui;
+    document.getElementById('cNon').textContent = total - oui;
+    const c = document.getElementById('listContainer');
+    if (total === 0) { c.innerHTML = '<p class="empty-msg">Aucune réponse pour l\'instant.</p>'; return; }
+    c.innerHTML = participants.map(p => {
+      const d = new Date(p.created_at);
+      const h = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const badge = p.presence
+        ? '<span class="badge yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Présent</span>'
+        : '<span class="badge no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Absent</span>';
+      const comment = p.commentaire ? '<div class="participant-comment">💬 ' + esc(p.commentaire) + '</div>' : '';
+      return '<div class="participant-item"><div><div class="participant-name">' + esc(p.nom) + '</div><div class="participant-time">' + h + '</div>' + comment + '</div>' + badge + '</div>';
+    }).join('');
+  }
+
+  // ─── ADMIN ────────────────────────────────────────────────
+  function showLogin() {
+    document.getElementById('publicPanel').style.display = 'none';
+    document.getElementById('loginPanel').style.display = 'flex';
+    document.getElementById('adminPanel').style.display = 'none';
+  }
+  function checkLogin() {
+    if (document.getElementById('pwdInput').value === ADMIN_PWD) {
+      document.getElementById('loginPanel').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'flex';
+      populateAdminForm(); renderAdminList();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+  function showPublic() {
+    document.getElementById('publicPanel').style.display = 'block';
+    document.getElementById('loginPanel').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'none';
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('loginError').style.display = 'none';
+  }
+  function populateAdminForm() {
+    document.getElementById('adminTitre').value = ev.titre;
+    document.getElementById('adminTagline').value = ev.tagline;
+    document.getElementById('adminDate').value = ev.date;
+    document.getElementById('adminLieu').value = ev.lieu;
+    document.getElementById('adminAdresse').value = ev.adresse;
+    document.getElementById('adminDescription').value = ev.description;
+    document.getElementById('adminPrix').value = ev.prix;
+    document.getElementById('evActif').checked = ev.actif;
+  }
+  async function saveEvent() {
+    ev = {
+      titre: document.getElementById('adminTitre').value.trim() || ev.titre,
+      tagline: document.getElementById('adminTagline').value.trim(),
+      date: document.getElementById('adminDate').value.trim(),
+      lieu: document.getElementById('adminLieu').value.trim(),
+      adresse: document.getElementById('adminAdresse').value.trim(),
+      description: document.getElementById('adminDescription').value.trim(),
+      prix: document.getElementById('adminPrix').value.trim(),
+      actif: document.getElementById('evActif').checked
+    };
+    const { error } = await sb.from('parametres').upsert({
+      id: 1,
+      titre: ev.titre,
+      tagline: ev.tagline,
+      date_affichee: ev.date,
+      lieu_nom: ev.lieu,
+      lieu_adresse: ev.adresse,
+      description: ev.description,
+      prix_conditions: ev.prix,
+      inscriptions_ouvertes: ev.actif
+    });
+    if (error) { alert('Erreur sauvegarde : ' + error.message); return; }
+    applyEvent(); showToast('✅ Événement enregistré !');
+  }
+  function renderAdminList() {
+    const total = participants.length, oui = participants.filter(p => p.presence).length;
+    const at = document.getElementById('aCTotal'), ao = document.getElementById('aCOui'), an = document.getElementById('aCNon');
+    if (at) at.textContent = total; if (ao) ao.textContent = oui; if (an) an.textContent = total - oui;
+    const c = document.getElementById('adminList');
+    if (!c) return;
+    if (total === 0) { c.innerHTML = '<p class="empty-msg" style="padding:1rem 0;">Aucune inscription.</p>'; return; }
+    c.innerHTML = participants.map(p => {
+      const badge = p.presence
+        ? '<span class="badge yes" style="font-size:10px;padding:3px 8px;">Présent</span>'
+        : '<span class="badge no" style="font-size:10px;padding:3px 8px;">Absent</span>';
+      const comment = p.commentaire ? '<div style="font-size:11px;color:var(--or-light);opacity:0.6;font-style:italic;">💬 ' + esc(p.commentaire) + '</div>' : '';
+      return '<div class="admin-list-item"><div><div style="font-weight:700;">' + esc(p.nom) + '</div>' + comment + '</div>' + badge + '</div>';
+    }).join('');
+  }
+  async function resetInscriptions() {
+    if (!confirm('Supprimer TOUTES les inscriptions ? Action irréversible.')) return;
+    const { error } = await sb.from('inscriptions').delete().neq('id', 0);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadParticipants(); showToast('🗑 Inscriptions supprimées');
+  }
+  function exportCSV() {
+    const header = 'Nom,Présence,Commentaire,Date\n';
+    const rows = participants.map(p => {
+      const d = new Date(p.created_at).toLocaleString('fr-FR');
+      return '"' + p.nom + '","' + (p.presence ? 'Présent' : 'Absent') + '","' + (p.commentaire || '') + '","' + d + '"';
+    }).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'inscriptions_club100.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+  function esc(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('loginPanel').style.display === 'flex') checkLogin();
+  });
+</script>
+</body>
+</html>

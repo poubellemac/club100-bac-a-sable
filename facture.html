@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factures — Club 100 Reims en Champagne</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --or: #C9A84C;
+    --or-clair: #E8C97A;
+    --or-pale: #F5E9C8;
+    --noir: #0A0A0A;
+    --gris-fonce: #1A1A1A;
+    --gris: #2A2A2A;
+    --gris-moyen: #666;
+    --blanc: #FAFAFA;
+    --rouge: #C0392B;
+    --vert: #27AE60;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: var(--noir);
+    color: var(--blanc);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, var(--gris-fonce) 0%, var(--gris) 100%);
+    border-bottom: 2px solid var(--or);
+    padding: 20px 24px;
+    text-align: center;
+  }
+  header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--or);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  header p {
+    font-size: 11px;
+    color: var(--gris-moyen);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  /* ── NAV TABS ── */
+  nav {
+    display: flex;
+    background: var(--gris-fonce);
+    border-bottom: 1px solid #333;
+  }
+  nav button {
+    flex: 1;
+    padding: 14px 8px;
+    background: none;
+    border: none;
+    color: var(--gris-moyen);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  nav button.active {
+    color: var(--or);
+    border-bottom-color: var(--or);
+    background: rgba(201,168,76,0.05);
+  }
+
+  /* ── SECTIONS ── */
+  section { display: none; padding: 20px 16px; }
+  section.active { display: block; }
+
+  /* ── FORMULAIRE ── */
+  .card {
+    background: var(--gris-fonce);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    color: var(--or);
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+    letter-spacing: 1px;
+  }
+
+  label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gris-moyen);
+    margin-bottom: 6px;
+    margin-top: 14px;
+  }
+  label:first-child { margin-top: 0; }
+
+  input, select, textarea {
+    width: 100%;
+    background: var(--gris);
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 12px 14px;
+    color: var(--blanc);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--or);
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  select option { background: var(--gris); }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .montant-display {
+    text-align: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    color: var(--or);
+    font-weight: 700;
+    padding: 12px 0;
+  }
+
+  /* ── BOUTONS ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+  }
+  .btn-or {
+    background: linear-gradient(135deg, var(--or) 0%, var(--or-clair) 100%);
+    color: var(--noir);
+  }
+  .btn-or:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--or);
+    color: var(--or);
+  }
+  .btn-outline:hover { background: rgba(201,168,76,0.1); }
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--rouge);
+    color: var(--rouge);
+    font-size: 11px;
+    padding: 10px;
+    margin-top: 6px;
+  }
+
+  /* ── NUMÉRO FACTURE ── */
+  .numero-badge {
+    background: rgba(201,168,76,0.1);
+    border: 1px solid var(--or);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .numero-badge .label { font-size: 10px; color: var(--gris-moyen); letter-spacing: 1px; margin-bottom: 4px; }
+  .numero-badge .numero { font-family: 'Cormorant Garamond', serif; font-size: 28px; color: var(--or); font-weight: 700; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--gris-fonce);
+    border: 1px solid var(--or);
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-size: 13px;
+    color: var(--blanc);
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    text-align: center;
+    min-width: 260px;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.error { border-color: var(--rouge); }
+  #toast.success { border-color: var(--vert); }
+
+  /* ── LISTE FACTURES ── */
+  .facture-item {
+    background: var(--gris-fonce);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .facture-item .fi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .facture-item .fi-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    color: var(--or);
+    font-weight: 700;
+  }
+  .facture-item .fi-montant {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    color: var(--blanc);
+    font-weight: 700;
+  }
+  .facture-item .fi-nom { font-size: 13px; font-weight: 600; }
+  .facture-item .fi-desc { font-size: 11px; color: var(--gris-moyen); }
+  .facture-item .fi-date { font-size: 10px; color: var(--gris-moyen); letter-spacing: 1px; }
+  .badge-type {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(201,168,76,0.15);
+    color: var(--or);
+    border: 1px solid rgba(201,168,76,0.3);
+  }
+
+  /* ── MOT DE PASSE ── */
+  #admin-lock {
+    text-align: center;
+    padding: 40px 20px;
+  }
+  #admin-lock h2 {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--or);
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+  #admin-lock input {
+    text-align: center;
+    letter-spacing: 4px;
+    font-size: 18px;
+    max-width: 200px;
+    margin: 0 auto 16px;
+  }
+
+  /* ── STATS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--gris-fonce);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-card .val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    color: var(--or);
+    font-weight: 700;
+  }
+  .stat-card .lbl { font-size: 10px; color: var(--gris-moyen); letter-spacing: 1px; margin-top: 4px; }
+
+  /* ── LOADING ── */
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #333;
+    border-top-color: var(--or);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 20px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gris-moyen);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* ── MODAL CONFIRMATION ── */
+  #modal-confirm {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #modal-confirm.show { display: flex; }
+  .modal-box {
+    background: var(--gris-fonce);
+    border: 1px solid var(--or);
+    border-radius: 12px;
+    padding: 28px 20px;
+    max-width: 360px;
+    width: 100%;
+    text-align: center;
+  }
+  .modal-box h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    color: var(--or);
+    margin-bottom: 12px;
+  }
+  .modal-box p { font-size: 13px; color: #bbb; line-height: 1.5; margin-bottom: 20px; }
+  .modal-box .facture-recap {
+    background: var(--gris);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 20px;
+    text-align: left;
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .modal-box .facture-recap strong { color: var(--or); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Club 100 Reims en Champagne</h1>
+  <p>Gestion des factures</p>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('nouvelle')">✦ Nouvelle</button>
+  <button onclick="showTab('admin')">⚙ Admin</button>
+</nav>
+
+<!-- ══════════════════════════════════════
+     SECTION NOUVELLE FACTURE
+══════════════════════════════════════ -->
+<section id="tab-nouvelle" class="active">
+
+  <div id="numero-facture-block" class="numero-badge">
+    <div class="label">Numéro de facture</div>
+    <div class="numero" id="display-numero">Chargement...</div>
+  </div>
+
+  <!-- Membre -->
+  <div class="card">
+    <div class="card-title">👤 Informations membre</div>
+    <label>Prénom *</label>
+    <input type="text" id="prenom" placeholder="Ex : Jean">
+    <label>Nom *</label>
+    <input type="text" id="nom" placeholder="Ex : DUPONT">
+    <label>Adresse mail *</label>
+    <input type="email" id="mail" placeholder="jean.dupont@mail.com">
+    <label>Adresse postale</label>
+    <input type="text" id="adresse" placeholder="12 rue de la Paix, 51100 Reims">
+  </div>
+
+  <!-- Prestation -->
+  <div class="card">
+    <div class="card-title">📋 Prestation</div>
+    <label>Type *</label>
+    <select id="type">
+      <option value="adhesion_annuelle">Adhésion annuelle</option>
+      <option value="cotisation">Cotisation</option>
+      <option value="evenement">Participation événement</option>
+      <option value="vetement">Commande vêtements</option>
+      <option value="autre">Autre prestation</option>
+    </select>
+    <label>Description *</label>
+    <textarea id="description" placeholder="Ex : Adhésion annuelle 2026 au Club 100 Reims en Champagne"></textarea>
+    <label>Date de la prestation *</label>
+    <input type="date" id="date-prestation" value="">
+    <label>Montant (€) *</label>
+    <input type="number" id="montant" placeholder="0.00" min="0" step="0.01" oninput="updateMontant()">
+    <div class="montant-display" id="montant-display">0,00 €</div>
+  </div>
+
+  <!-- Paiement -->
+  <div class="card">
+    <div class="card-title">💳 Mode de paiement</div>
+    <label>Règlement par *</label>
+    <select id="paiement">
+      <option value="virement">Virement bancaire</option>
+      <option value="cheque">Chèque</option>
+      <option value="especes">Espèces</option>
+      <option value="cb">Carte bancaire</option>
+    </select>
+    <label>Référence / Note interne</label>
+    <input type="text" id="ref-interne" placeholder="Ex : Virement reçu le 20/05/2026">
+  </div>
+
+  <button class="btn btn-or" onclick="confirmerFacture()">
+    ✦ Générer la facture PDF
+  </button>
+
+</section>
+
+<!-- ══════════════════════════════════════
+     SECTION ADMIN
+══════════════════════════════════════ -->
+<section id="tab-admin">
+
+  <!-- Écran verrou -->
+  <div id="admin-lock">
+    <h2>🔐 Accès admin</h2>
+    <input type="password" id="admin-pwd" placeholder="••••••" onkeydown="if(event.key==='Enter')checkPwd()">
+    <br>
+    <button class="btn btn-or" style="max-width:200px;margin:0 auto;" onclick="checkPwd()">Entrer</button>
+  </div>
+
+  <!-- Contenu admin (masqué jusqu'au mot de passe) -->
+  <div id="admin-content" style="display:none;">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="val" id="stat-total">—</div>
+        <div class="lbl">Factures émises</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="stat-ca">—</div>
+        <div class="lbl">Total encaissé</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="stat-mois">—</div>
+        <div class="lbl">Ce mois-ci</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="stat-annee">—</div>
+        <div class="lbl">Cette année</div>
+      </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-title" style="margin-bottom:12px;">🔍 Filtres</div>
+      <label>Recherche (nom, mail, n° facture)</label>
+      <input type="text" id="filtre-search" placeholder="Tapez pour filtrer..." oninput="filtrerFactures()">
+      <div class="row-2" style="margin-top:10px;">
+        <div>
+          <label>Année</label>
+          <select id="filtre-annee" onchange="filtrerFactures()">
+            <option value="">Toutes</option>
+          </select>
+        </div>
+        <div>
+          <label>Type</label>
+          <select id="filtre-type" onchange="filtrerFactures()">
+            <option value="">Tous</option>
+            <option value="adhesion_annuelle">Adhésion annuelle</option>
+            <option value="cotisation">Cotisation</option>
+            <option value="evenement">Événement</option>
+            <option value="vetement">Vêtements</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+      </div>
+      <label>Tri</label>
+      <select id="filtre-tri" onchange="filtrerFactures()">
+        <option value="desc">Plus récent d'abord</option>
+        <option value="asc">Plus ancien d'abord</option>
+        <option value="montant_desc">Montant décroissant</option>
+        <option value="montant_asc">Montant croissant</option>
+        <option value="nom">Nom A→Z</option>
+      </select>
+    </div>
+
+    <button class="btn btn-outline" onclick="exportCSV()" style="margin-bottom:12px;">
+      ⬇ Exporter CSV
+    </button>
+
+    <div id="nb-resultats" style="font-size:11px;color:#888;margin-bottom:10px;text-align:center;"></div>
+
+    <div id="liste-factures">
+      <div class="spinner"></div>
+    </div>
+
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════
+     MODAL CONFIRMATION
+══════════════════════════════════════ -->
+<div id="modal-confirm">
+  <div class="modal-box">
+    <h3>Confirmer la facture</h3>
+    <p>Vérifiez les informations avant de générer le PDF.</p>
+    <div class="facture-recap" id="modal-recap"></div>
+    <p style="font-size:11px;color:#888;margin-bottom:16px;">
+      ⚠️ Cette facture ne constitue un justificatif valable qu'après réception effective du règlement par l'association.
+    </p>
+    <button class="btn btn-or" onclick="validerEtGenerer()">✦ Confirmer et télécharger le PDF</button>
+    <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal()">Annuler</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://hepwtaxbnxnpmancrrxe.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3';
+const ADMIN_PWD     = 'admin';
+
+const EMAILJS_PUBLIC_KEY  = 'JMg0VaPvHEtJPKJHY';
+const EMAILJS_SERVICE_ID  = 'service_2jxbi28';
+const EMAILJS_TEMPLATE_ID = 'template_87zbs1w'; // à adapter si nouveau template créé
+
+const ASSO = {
+  nom:     'Club 100 Reims en Champagne',
+  adresse: 'Chez HI Studio Photo – Bâtiment C1',
+  cp:      'Allée Alberto Santos Dumont – 51100 Reims',
+  rna:     'W513008995',
+  rib:     'FR76 1020 6000 0198 7559 9124 403',
+  mail:    'poubellemac@free.fr',
+  tva:     'TVA non applicable, art. 293 B du CGI',
+  statut:  'Association loi 1901 – But non lucratif'
+};
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+let prochainNumero = null;
+let currentFactureData = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Date du jour par défaut
+  const today = new Date();
+  document.getElementById('date-prestation').value = today.toISOString().split('T')[0];
+  // Charger le prochain numéro
+  chargerProchainNumero();
+  // EmailJS
+  if (typeof emailjs !== 'undefined') {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+  }
+});
+
+// ══════════════════════════════════════════════════════
+//  NUMÉROTATION
+// ══════════════════════════════════════════════════════
+async function chargerProchainNumero() {
+  try {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+    // Chercher toutes les factures du jour
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/factures?numero=like.${dateStr}*&select=numero&order=numero.desc&limit=1`,
+      { headers: supaHeaders() }
+    );
+    const data = await res.json();
+    let seq = 1;
+    if (data && data.length > 0) {
+      const last = data[0].numero;
+      const parts = last.split('-');
+      if (parts.length === 2) seq = parseInt(parts[1]) + 1;
+    }
+    prochainNumero = `${dateStr}-${String(seq).padStart(3, '0')}`;
+    document.getElementById('display-numero').textContent = prochainNumero;
+  } catch(e) {
+    // Fallback local
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+    prochainNumero = `${dateStr}-001`;
+    document.getElementById('display-numero').textContent = prochainNumero;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════════════
+function showTab(tab) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'admin') {
+    // reset
+    document.getElementById('admin-lock').style.display = 'block';
+    document.getElementById('admin-content').style.display = 'none';
+    document.getElementById('admin-pwd').value = '';
+  }
+}
+
+function updateMontant() {
+  const v = parseFloat(document.getElementById('montant').value) || 0;
+  document.getElementById('montant-display').textContent = v.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  setTimeout(() => { t.className = ''; }, 3500);
+}
+
+function closeModal() {
+  document.getElementById('modal-confirm').classList.remove('show');
+}
+
+const typeLabels = {
+  adhesion_annuelle: 'Adhésion annuelle',
+  cotisation: 'Cotisation',
+  evenement: 'Participation événement',
+  vetement: 'Commande vêtements',
+  autre: 'Autre prestation'
+};
+const paiementLabels = {
+  virement: 'Virement bancaire',
+  cheque: 'Chèque',
+  especes: 'Espèces',
+  cb: 'Carte bancaire'
+};
+
+// ══════════════════════════════════════════════════════
+//  VALIDATION + MODAL
+// ══════════════════════════════════════════════════════
+function confirmerFacture() {
+  const prenom = document.getElementById('prenom').value.trim();
+  const nom = document.getElementById('nom').value.trim();
+  const mail = document.getElementById('mail').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const montant = parseFloat(document.getElementById('montant').value);
+  const date = document.getElementById('date-prestation').value;
+
+  if (!prenom || !nom) return toast('⚠ Prénom et nom obligatoires', 'error');
+  if (!mail || !mail.includes('@')) return toast('⚠ Adresse mail invalide', 'error');
+  if (!description) return toast('⚠ Description obligatoire', 'error');
+  if (!montant || montant <= 0) return toast('⚠ Montant invalide', 'error');
+  if (!date) return toast('⚠ Date obligatoire', 'error');
+
+  currentFactureData = {
+    numero:      prochainNumero,
+    prenom, nom, mail,
+    adresse:     document.getElementById('adresse').value.trim(),
+    type:        document.getElementById('type').value,
+    description,
+    date_prestation: date,
+    montant,
+    paiement:    document.getElementById('paiement').value,
+    ref_interne: document.getElementById('ref-interne').value.trim(),
+    date_emission: new Date().toISOString().split('T')[0]
+  };
+
+  const d = currentFactureData;
+  document.getElementById('modal-recap').innerHTML = `
+    <strong>Facture n°</strong> ${d.numero}<br>
+    <strong>Membre</strong> ${d.prenom} ${d.nom}<br>
+    <strong>Mail</strong> ${d.mail}<br>
+    <strong>Prestation</strong> ${typeLabels[d.type]}<br>
+    <strong>Description</strong> ${d.description}<br>
+    <strong>Date</strong> ${formatDate(d.date_prestation)}<br>
+    <strong>Montant</strong> ${d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2})} €<br>
+    <strong>Paiement</strong> ${paiementLabels[d.paiement]}
+  `;
+
+  document.getElementById('modal-confirm').classList.add('show');
+}
+
+// ══════════════════════════════════════════════════════
+//  GÉNÉRATION PDF (jsPDF)
+// ══════════════════════════════════════════════════════
+function genererPDF(d) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210; const M = 18;
+
+  // ── Fond blanc ──
+  doc.setFillColor(255,255,255);
+  doc.rect(0, 0, W, 297, 'F');
+
+  // ── Bandeau supérieur doré ──
+  doc.setFillColor(201, 168, 76);
+  doc.rect(0, 0, W, 28, 'F');
+
+  // ── Nom asso ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(10, 10, 10);
+  doc.text('CLUB 100 REIMS EN CHAMPAGNE', M, 12);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(ASSO.statut, M, 18);
+  doc.text(`RNA : ${ASSO.rna}`, M, 23);
+
+  // ── Titre FACTURE ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(28);
+  doc.setTextColor(201, 168, 76);
+  doc.text('FACTURE', W - M, 20, {align: 'right'});
+
+  // ── Numéro et date ──
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 80);
+  doc.text(`N° ${d.numero}`, W - M, 30, {align: 'right'});
+  doc.text(`Émise le ${formatDate(d.date_emission)}`, W - M, 36, {align: 'right'});
+
+  // ── Adresse émetteur ──
+  let y = 38;
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  doc.text(ASSO.adresse, M, y); y += 5;
+  doc.text(ASSO.cp, M, y); y += 5;
+  doc.text(`Contact : ${ASSO.mail}`, M, y); y += 12;
+
+  // ── Ligne séparatrice ──
+  doc.setDrawColor(201, 168, 76);
+  doc.setLineWidth(0.5);
+  doc.line(M, y, W-M, y); y += 10;
+
+  // ── Bloc destinataire ──
+  doc.setFillColor(248, 248, 248);
+  doc.roundedRect(M, y, 80, d.adresse ? 30 : 22, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(140, 140, 140);
+  doc.text('FACTURÉ À', M+6, y+7);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(10, 10, 10);
+  doc.text(`${d.prenom} ${d.nom.toUpperCase()}`, M+6, y+14);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  doc.text(d.mail, M+6, y+20);
+  if (d.adresse) {
+    doc.text(d.adresse, M+6, y+26);
+    y += 38;
+  } else {
+    y += 30;
+  }
+
+  // ── Bloc tableau prestation ──
+  y += 4;
+  // En-tête tableau
+  doc.setFillColor(40, 40, 40);
+  doc.rect(M, y, W-(2*M), 9, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(201, 168, 76);
+  doc.text('DÉSIGNATION', M+4, y+6);
+  doc.text('DATE', W-80, y+6);
+  doc.text('MONTANT', W-M-4, y+6, {align:'right'});
+  y += 9;
+
+  // Ligne prestation
+  doc.setFillColor(250, 250, 250);
+  const descLines = doc.splitTextToSize(d.description, 90);
+  const rowH = Math.max(14, descLines.length * 5 + 8);
+  doc.rect(M, y, W-(2*M), rowH, 'F');
+  doc.setDrawColor(220, 220, 220);
+  doc.rect(M, y, W-(2*M), rowH, 'S');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(10, 10, 10);
+  doc.text(typeLabels[d.type], M+4, y+6);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 80);
+  doc.text(descLines, M+4, y+11);
+  doc.setFontSize(9);
+  doc.setTextColor(80, 80, 80);
+  doc.text(formatDate(d.date_prestation), W-80, y+6);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(10, 10, 10);
+  doc.text(`${d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2})} €`, W-M-4, y+6, {align:'right'});
+  y += rowH + 4;
+
+  // ── Bloc TOTAL ──
+  doc.setFillColor(201, 168, 76);
+  doc.rect(W-80, y, 80-M, 12, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(10, 10, 10);
+  doc.text('TOTAL', W-76, y+8);
+  doc.text(`${d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2})} €`, W-M-4, y+8, {align:'right'});
+  y += 20;
+
+  // ── Paiement et RIB ──
+  doc.setFillColor(248, 248, 248);
+  doc.roundedRect(M, y, W-(2*M), 28, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(140, 140, 140);
+  doc.text('RÈGLEMENT', M+6, y+7);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(10, 10, 10);
+  doc.text(`Mode de paiement : ${paiementLabels[d.paiement]}`, M+6, y+13);
+  if (d.paiement === 'virement') {
+    doc.text(`RIB : ${ASSO.rib}`, M+6, y+19);
+    doc.text('Banque : Crédit Mutuel', M+6, y+25);
+  }
+  if (d.ref_interne) {
+    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(8);
+    doc.text(`Réf. interne : ${d.ref_interne}`, W-M-4, y+13, {align:'right'});
+  }
+  y += 36;
+
+  // ── Mentions légales ──
+  doc.setDrawColor(201, 168, 76);
+  doc.setLineWidth(0.3);
+  doc.line(M, y, W-M, y); y += 6;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(180, 80, 40);
+  doc.text('MENTION IMPORTANTE :', M, y); y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(80, 80, 80);
+  const mention1 = 'Cette facture ne constitue un justificatif comptable valable qu\'après réception effective et confirmation du règlement par l\'association.';
+  doc.text(doc.splitTextToSize(mention1, W-(2*M)), M, y); y += 9;
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(140, 140, 140);
+  doc.text(ASSO.tva, M, y); y += 5;
+  doc.text('Association loi 1901 à but non lucratif. Gestion désintéressée.', M, y); y += 5;
+  doc.text(`Club 100 Reims en Champagne – RNA ${ASSO.rna} – Non immatriculée au RCS.`, M, y);
+
+  // ── Pied de page ──
+  doc.setFillColor(201, 168, 76);
+  doc.rect(0, 285, W, 12, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(10, 10, 10);
+  doc.text('Club 100 Reims en Champagne  ·  Association loi 1901  ·  RNA W513008995', W/2, 292, {align:'center'});
+
+  return doc;
+}
+
+// ══════════════════════════════════════════════════════
+//  VALIDER ET GÉNÉRER
+// ══════════════════════════════════════════════════════
+async function validerEtGenerer() {
+  closeModal();
+  const d = currentFactureData;
+
+  // 1. Générer PDF et télécharger
+  try {
+    const doc = genererPDF(d);
+    doc.save(`Facture_${d.numero}_${d.nom}.pdf`);
+    toast('✓ PDF téléchargé !', 'success');
+  } catch(e) {
+    toast('⚠ Erreur génération PDF', 'error');
+    console.error(e);
+    return;
+  }
+
+  // 2. Sauvegarder dans Supabase
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
+      method: 'POST',
+      headers: { ...supaHeaders(), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        numero:          d.numero,
+        prenom:          d.prenom,
+        nom:             d.nom,
+        mail:            d.mail,
+        adresse:         d.adresse,
+        type_prestation: d.type,
+        description:     d.description,
+        date_prestation: d.date_prestation,
+        montant:         d.montant,
+        paiement:        d.paiement,
+        ref_interne:     d.ref_interne,
+        date_emission:   d.date_emission
+      })
+    });
+    toast('✓ Facture archivée', 'success');
+  } catch(e) {
+    toast('⚠ Archivage Supabase échoué', 'error');
+  }
+
+  // 3. Mail récap admin via EmailJS
+  try {
+    if (typeof emailjs !== 'undefined') {
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        liste: `NOUVELLE FACTURE\n\n` +
+               `N° : ${d.numero}\n` +
+               `Date : ${formatDate(d.date_emission)}\n` +
+               `Membre : ${d.prenom} ${d.nom}\n` +
+               `Mail : ${d.mail}\n` +
+               `Prestation : ${typeLabels[d.type]}\n` +
+               `Description : ${d.description}\n` +
+               `Montant : ${d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2})} €\n` +
+               `Paiement : ${paiementLabels[d.paiement]}\n` +
+               (d.ref_interne ? `Réf. : ${d.ref_interne}` : '')
+      });
+      toast('✓ Mail récap envoyé', 'success');
+    }
+  } catch(e) {
+    console.warn('EmailJS:', e);
+  }
+
+  // 4. Reset formulaire + nouveau numéro
+  resetForm();
+  await chargerProchainNumero();
+}
+
+function resetForm() {
+  ['prenom','nom','mail','adresse','description','ref-interne'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('montant').value = '';
+  document.getElementById('montant-display').textContent = '0,00 €';
+  document.getElementById('type').selectedIndex = 0;
+  document.getElementById('paiement').selectedIndex = 0;
+  const today = new Date();
+  document.getElementById('date-prestation').value = today.toISOString().split('T')[0];
+}
+
+// ══════════════════════════════════════════════════════
+//  ADMIN
+// ══════════════════════════════════════════════════════
+function checkPwd() {
+  const pwd = document.getElementById('admin-pwd').value;
+  if (pwd === ADMIN_PWD) {
+    document.getElementById('admin-lock').style.display = 'none';
+    document.getElementById('admin-content').style.display = 'block';
+    chargerFactures();
+  } else {
+    toast('⚠ Mot de passe incorrect', 'error');
+    document.getElementById('admin-pwd').value = '';
+  }
+}
+
+let toutesLesFactures = [];
+
+async function chargerFactures() {
+  document.getElementById('liste-factures').innerHTML = '<div class="spinner"></div>';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/factures?select=*&order=created_at.desc`,
+      { headers: supaHeaders() }
+    );
+    const data = await res.json();
+    toutesLesFactures = Array.isArray(data) ? data : [];
+
+    // Remplir filtre années
+    const annees = [...new Set(toutesLesFactures.map(f => (f.date_emission||'').substring(0,4)).filter(Boolean))].sort().reverse();
+    const selAnnee = document.getElementById('filtre-annee');
+    selAnnee.innerHTML = '<option value="">Toutes</option>' + annees.map(a => `<option value="${a}">${a}</option>`).join('');
+
+    calculerStats(toutesLesFactures);
+    afficherFactures(toutesLesFactures);
+
+  } catch(e) {
+    document.getElementById('liste-factures').innerHTML = `<div class="empty-state">⚠ Erreur de connexion Supabase</div>`;
+  }
+}
+
+function calculerStats(data) {
+  const now = new Date();
+  const moisCourant = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const anneeCourante = String(now.getFullYear());
+
+  const total = data.length;
+  const ca = data.reduce((s,f) => s + parseFloat(f.montant||0), 0);
+  const mois = data.filter(f => (f.date_emission||'').startsWith(moisCourant)).reduce((s,f) => s + parseFloat(f.montant||0), 0);
+  const annee = data.filter(f => (f.date_emission||'').startsWith(anneeCourante)).reduce((s,f) => s + parseFloat(f.montant||0), 0);
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-ca').textContent = ca.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' €';
+  document.getElementById('stat-mois').textContent = mois.toLocaleString('fr-FR',{minimumFractionDigits:0}) + ' €';
+  document.getElementById('stat-annee').textContent = annee.toLocaleString('fr-FR',{minimumFractionDigits:0}) + ' €';
+}
+
+function filtrerFactures() {
+  const search = document.getElementById('filtre-search').value.toLowerCase().trim();
+  const annee  = document.getElementById('filtre-annee').value;
+  const type   = document.getElementById('filtre-type').value;
+  const tri    = document.getElementById('filtre-tri').value;
+
+  let result = [...toutesLesFactures];
+
+  if (search) result = result.filter(f =>
+    (f.nom||'').toLowerCase().includes(search) ||
+    (f.prenom||'').toLowerCase().includes(search) ||
+    (f.mail||'').toLowerCase().includes(search) ||
+    (f.numero||'').toLowerCase().includes(search) ||
+    (f.description||'').toLowerCase().includes(search)
+  );
+  if (annee) result = result.filter(f => (f.date_emission||'').startsWith(annee));
+  if (type)  result = result.filter(f => f.type_prestation === type);
+
+  // Tri
+  result.sort((a,b) => {
+    if (tri === 'asc')          return (a.date_emission||'') > (b.date_emission||'') ? 1 : -1;
+    if (tri === 'montant_desc') return parseFloat(b.montant) - parseFloat(a.montant);
+    if (tri === 'montant_asc')  return parseFloat(a.montant) - parseFloat(b.montant);
+    if (tri === 'nom')          return (a.nom||'').localeCompare(b.nom||'');
+    return (b.date_emission||'') > (a.date_emission||'') ? 1 : -1; // desc par défaut
+  });
+
+  document.getElementById('nb-resultats').textContent =
+    result.length === toutesLesFactures.length
+      ? `${result.length} facture${result.length>1?'s':''} au total`
+      : `${result.length} résultat${result.length>1?'s':''} sur ${toutesLesFactures.length}`;
+
+  afficherFactures(result);
+}
+
+function afficherFactures(data) {
+  if (!data.length) {
+    document.getElementById('liste-factures').innerHTML = `
+      <div class="empty-state"><div class="icon">📂</div>Aucune facture trouvée.</div>`;
+    return;
+  }
+
+  // Grouper par mois/année pour affichage chronologique
+  const groupes = {};
+  data.forEach(f => {
+    const d = f.date_emission || f.created_at || '';
+    const key = d.substring(0,7); // YYYY-MM
+    if (!groupes[key]) groupes[key] = [];
+    groupes[key].push(f);
+  });
+
+  let html = '';
+  Object.keys(groupes).sort().reverse().forEach(key => {
+    const [y,m] = key.split('-');
+    const moisNom = new Date(y, parseInt(m)-1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    const totalMois = groupes[key].reduce((s,f) => s + parseFloat(f.montant||0), 0);
+    html += `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px;">
+        <span style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--or);font-weight:700;text-transform:capitalize;">${moisNom}</span>
+        <span style="font-size:12px;color:#888;">${groupes[key].length} fact. · ${totalMois.toLocaleString('fr-FR',{minimumFractionDigits:2})} €</span>
+      </div>`;
+    html += groupes[key].map(f => `
+      <div class="facture-item">
+        <div class="fi-top">
+          <div>
+            <div class="fi-num">${f.numero}</div>
+            <div class="fi-date">Émise le ${formatDate(f.date_emission)}</div>
+          </div>
+          <div class="fi-montant">${parseFloat(f.montant||0).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
+        </div>
+        <div class="fi-nom">${f.prenom||''} ${(f.nom||'').toUpperCase()}</div>
+        <div class="fi-desc" style="margin-top:2px;">${f.mail||''}</div>
+        <div class="fi-desc">${f.description||''}</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
+          <span class="badge-type">${typeLabels[f.type_prestation]||f.type_prestation||''}</span>
+          <span style="font-size:10px;color:#888;">${paiementLabels[f.paiement]||f.paiement||''}</span>
+          ${f.ref_interne ? `<span style="font-size:10px;color:#888;">· ${f.ref_interne}</span>` : ''}
+        </div>
+        <button class="btn btn-outline" style="padding:10px;font-size:11px;margin-top:8px;" onclick='regenererPDF(${JSON.stringify(f).replace(/'/g,"&#39;")})'>
+          ⬇ Retélécharger PDF
+        </button>
+      </div>
+    `).join('');
+  });
+
+  document.getElementById('liste-factures').innerHTML = html;
+}
+
+function regenererPDF(f) {
+  const d = {
+    numero:          f.numero,
+    prenom:          f.prenom,
+    nom:             f.nom,
+    mail:            f.mail,
+    adresse:         f.adresse || '',
+    type:            f.type_prestation,
+    description:     f.description,
+    date_prestation: f.date_prestation,
+    montant:         parseFloat(f.montant),
+    paiement:        f.paiement,
+    ref_interne:     f.ref_interne || '',
+    date_emission:   f.date_emission
+  };
+  const doc = genererPDF(d);
+  doc.save(`Facture_${d.numero}_${d.nom}.pdf`);
+  toast('✓ PDF retéléchargé', 'success');
+}
+
+async function exportCSV() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/factures?select=*&order=created_at.asc`,
+      { headers: supaHeaders() }
+    );
+    const data = await res.json();
+    if (!data.length) return toast('Aucune donnée à exporter', '');
+
+    const headers = ['Numéro','Date émission','Prénom','Nom','Mail','Type','Description','Date prestation','Montant','Paiement','Réf. interne'];
+    const rows = data.map(f => [
+      f.numero, formatDate(f.date_emission), f.prenom, f.nom, f.mail,
+      typeLabels[f.type_prestation]||f.type_prestation, f.description,
+      formatDate(f.date_prestation), f.montant, paiementLabels[f.paiement]||f.paiement, f.ref_interne||''
+    ]);
+
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `factures_club100_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    toast('✓ Export CSV téléchargé', 'success');
+  } catch(e) {
+    toast('⚠ Erreur export', 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  UTILITAIRES
+// ══════════════════════════════════════════════════════
+function supaHeaders() {
+  return {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`
+  };
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  const [y,m,d] = str.split('T')[0].split('-');
+  return `${d}/${m}/${y}`;
+}
+</script>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+</body>
+</html>

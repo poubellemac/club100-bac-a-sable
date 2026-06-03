@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reset — Club 100</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --noir: #0F0F0F; --noir-soft: #1A1A1A;
+    --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+    --blanc: #F5F0E8; --gris-mid: #444;
+    --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+    --red: #8B1A1A; --red-light: #FAEAEA; --red-dark: #5C0F0F;
+    --green: #2E6B3E;
+  }
+  body { font-family: 'Lato', sans-serif; background: var(--noir); color: var(--blanc); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; }
+  .box { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 14px; padding: 2rem 1.5rem; max-width: 360px; width: 100%; text-align: center; }
+  h1 { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.4rem; margin-bottom: 1.5rem; }
+  input[type="password"] { width: 100%; padding: 10px 14px; font-size: 15px; font-family: 'Lato', sans-serif; border: 1px solid var(--border); border-radius: 8px; background: var(--noir); color: var(--blanc); outline: none; margin-bottom: 1rem; }
+  input:focus { border-color: var(--or); }
+  .btn { width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 0.5rem; transition: all 0.18s; }
+  .btn-or { background: var(--or); color: var(--noir); }
+  .btn-or:hover { background: var(--or-light); }
+  .btn-danger { background: transparent; color: #E57373; border: 1px solid #E57373; margin-top: 1.5rem; }
+  .btn-danger:hover { background: var(--red-light); color: var(--red-dark); }
+  .btn-back { background: transparent; color: var(--or-light); border: 1px solid var(--border); margin-top: 0.75rem; }
+  .error { font-size: 13px; color: #E57373; margin-bottom: 10px; display: none; }
+  .success { font-size: 14px; color: #4CAF50; margin-top: 1rem; display: none; }
+  #resetPanel { display: none; }
+  .count { font-family: 'Playfair Display', serif; font-size: 3rem; color: var(--or); margin: 1rem 0; }
+  .label { font-size: 12px; color: var(--or-light); opacity: 0.6; letter-spacing: 0.1em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="box" id="loginBox">
+  <h1>🔐 Accès admin</h1>
+  <input type="password" id="pwdInput" placeholder="Mot de passe" />
+  <div class="error" id="loginError">Mot de passe incorrect.</div>
+  <button class="btn btn-or" onclick="checkLogin()">Entrer</button>
+  <a href="inscriptions_event.html"><button class="btn btn-back">← Retour au site</button></a>
+</div>
+
+<!-- RESET PANEL -->
+<div class="box" id="resetPanel">
+  <h1>🗑 Réinitialisation</h1>
+  <div class="label">Inscriptions actuelles</div>
+  <div class="count" id="countDisplay">…</div>
+  <div class="label">personnes inscrites</div>
+  <button class="btn btn-danger" onclick="doReset()">Supprimer toutes les inscriptions</button>
+  <div class="success" id="successMsg">✅ Inscriptions supprimées !</div>
+  <a href="inscriptions_event.html"><button class="btn btn-back" style="margin-top:1.5rem;">← Retour au site</button></a>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+  const ADMIN_PWD   = "admin";
+  const EJS_PUBLIC  = "JMg0VaPvHEtJPKJHY";
+  const EJS_SERVICE = "service_2jxbi28";
+  const EJS_TEMPLATE= "template_87zbs1w";
+  let sb = null;
+
+  window.addEventListener('DOMContentLoaded', () => {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    emailjs.init(EJS_PUBLIC);
+    document.getElementById('pwdInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') checkLogin();
+    });
+  });
+
+  function checkLogin() {
+    if (document.getElementById('pwdInput').value === ADMIN_PWD) {
+      document.getElementById('loginBox').style.display = 'none';
+      document.getElementById('resetPanel').style.display = 'block';
+      loadCount();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+
+  async function loadCount() {
+    const { count } = await sb.from('inscriptions').select('*', { count: 'exact', head: true });
+    document.getElementById('countDisplay').textContent = count ?? 0;
+  }
+
+  async function doReset() {
+    const btn = document.querySelector('.btn-danger');
+    btn.disabled = true;
+    btn.textContent = '📧 Envoi du mail...';
+
+    // 1. Récupérer toutes les inscriptions
+    const { data } = await sb.from('inscriptions').select('*').order('nom', { ascending: true });
+    const inscrits = data || [];
+
+    // 2. Construire le texte
+    const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    let texte = `ARCHIVE INSCRIPTIONS CLUB 100 — ${date}\n`;
+    texte += `${'='.repeat(40)}\n`;
+    texte += `Total : ${inscrits.length} personne(s)\n`;
+    texte += `Présents : ${inscrits.filter(p => p.presence).length}\n`;
+    texte += `${'='.repeat(40)}\n\n`;
+    inscrits.forEach(p => {
+      const presence = p.presence ? '✅ Vient' : '❌ Ne vient pas';
+      texte += `${presence}  —  ${p.nom}`;
+      if (p.commentaire) texte += `  (${p.commentaire})`;
+      texte += '\n';
+    });
+
+    // 3. Envoyer le mail
+    try {
+      await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { liste: texte });
+    } catch(e) {
+      console.error('Erreur mail:', e);
+    }
+
+    // 4. Confirmation avant suppression
+    btn.textContent = '🗑 Suppression...';
+    if (!confirm('Supprimer maintenant toutes les inscriptions ?')) {
+      btn.disabled = false;
+      btn.textContent = 'Supprimer toutes les inscriptions';
+      return;
+    }
+
+    const { error } = await sb.from('inscriptions').delete().neq('id', 0);
+    if (error) { alert('Erreur suppression : ' + error.message); btn.disabled = false; return; }
+
+    document.getElementById('countDisplay').textContent = '0';
+    document.getElementById('successMsg').textContent = '✅ Mail envoyé + inscriptions supprimées !';
+    document.getElementById('successMsg').style.display = 'block';
+    btn.style.display = 'none';
+  }
+</script>
+</body>
+</html>
