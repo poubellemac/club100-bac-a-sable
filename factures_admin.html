@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factures — Club 100 Reims</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --noir: #0F0F0F; --noir-soft: #1A1A1A; --noir-card: #202020;
+  --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+  --blanc: #F5F0E8; --gris-mid: #444;
+  --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+  --green: #2E6B3E; --red: #8B1A1A;
+}
+body {
+  font-family: 'Lato', sans-serif;
+  background: var(--noir); color: var(--blanc);
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  padding: 2rem 1rem 4rem;
+  background-image: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 65%);
+}
+
+/* HEADER */
+.header {
+  width: 100%; max-width: 700px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.75rem; padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo-img { width: 40px; height: auto; filter: drop-shadow(0 0 8px rgba(201,168,76,0.3)); }
+.header-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.1rem; }
+.header-sub { font-size: 11px; color: var(--or-light); opacity: 0.4; letter-spacing: 0.1em; text-transform: uppercase; }
+.version-tag { font-size: 10px; color: var(--or); opacity: 0.4; margin-top: 2px; }
+
+/* BOUTONS HEADER */
+.btn-row { display: flex; gap: 10px; align-items: center; }
+.btn-retour {
+  font-size: 12px; color: var(--or-light); opacity: 0.45;
+  background: none; border: none; cursor: pointer;
+  font-family: 'Lato', sans-serif; letter-spacing: 0.08em;
+  text-transform: uppercase; transition: opacity 0.2s;
+}
+.btn-retour:hover { opacity: 0.9; }
+.btn-creer {
+  font-size: 12px; font-weight: 700; padding: 7px 16px;
+  background: linear-gradient(135deg, var(--or-dark), var(--or));
+  color: var(--noir); border: none; border-radius: 8px; cursor: pointer;
+  font-family: 'Lato', sans-serif; letter-spacing: 0.06em; text-transform: uppercase;
+  transition: opacity 0.2s;
+}
+.btn-creer:hover { opacity: 0.85; }
+
+/* STATS ANNUELLES */
+.annee-block {
+  width: 100%; max-width: 700px; margin-bottom: 1.5rem;
+}
+.annee-titre {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--or-light); opacity: 0.35;
+  margin-bottom: 0.6rem;
+}
+.annee-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+.annee-card {
+  background: var(--noir-soft); border: 1px solid var(--border);
+  border-radius: 12px; padding: 0.9rem 1.2rem; flex: 1; min-width: 130px;
+  text-align: center;
+}
+.annee-card.active { border-color: var(--or); background: rgba(201,168,76,0.08); cursor: pointer; }
+.annee-card.active:hover { background: rgba(201,168,76,0.12); }
+.annee-num { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--or); }
+.annee-total { font-size: 1.4rem; font-weight: 700; color: var(--blanc); margin: 2px 0; }
+.annee-nb { font-size: 11px; color: var(--or-light); opacity: 0.45; }
+
+/* FILTRES */
+.filtres {
+  width: 100%; max-width: 700px;
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.filtre-select {
+  padding: 8px 12px; font-size: 13px; font-family: 'Lato', sans-serif;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--noir-soft); color: var(--blanc); outline: none;
+  cursor: pointer; flex: 1; min-width: 140px;
+}
+.filtre-select:focus { border-color: var(--or); }
+.btn-reset-filtre {
+  padding: 8px 14px; font-size: 12px; font-family: 'Lato', sans-serif;
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+  color: var(--or-light); cursor: pointer; opacity: 0.5; transition: opacity 0.2s;
+}
+.btn-reset-filtre:hover { opacity: 1; }
+
+/* LISTE FACTURES */
+.liste-wrap {
+  width: 100%; max-width: 700px;
+}
+.liste-header {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--or-light); opacity: 0.35;
+  margin-bottom: 0.6rem; display: flex; justify-content: space-between;
+}
+.facture-row {
+  background: var(--noir-soft); border: 1px solid var(--border);
+  border-radius: 10px; padding: 0.9rem 1.1rem;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 12px;
+}
+.facture-row:hover { border-color: rgba(201,168,76,0.5); }
+.facture-num { font-family: monospace; font-size: 11px; color: var(--or); opacity: 0.7; min-width: 110px; }
+.facture-nom { font-weight: 700; font-size: 13px; flex: 1; }
+.facture-desc { font-size: 11px; color: var(--or-light); opacity: 0.45; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.facture-montant { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--or); white-space: nowrap; }
+.badge-type {
+  font-size: 10px; padding: 2px 8px; border-radius: 20px;
+  border: 1px solid var(--border); color: var(--or-light);
+  background: rgba(201,168,76,0.08); white-space: nowrap; opacity: 0.7;
+}
+.badge-adhesion  { border-color: rgba(46,107,62,0.4); color: #6FCF97; background: rgba(46,107,62,0.1); }
+.badge-polo      { border-color: rgba(100,149,237,0.4); color: #89b4f8; background: rgba(100,149,237,0.1); }
+.badge-event     { border-color: rgba(255,165,0,0.4); color: #ffc46b; background: rgba(255,165,0,0.1); }
+.badge-invite    { border-color: rgba(201,168,76,0.5); color: var(--or); background: rgba(201,168,76,0.1); }
+.badge-autre     { border-color: rgba(150,150,150,0.3); color: #aaa; background: rgba(150,150,150,0.08); }
+
+.empty-msg { font-size: 13px; color: var(--or-light); opacity: 0.3; text-align: center; padding: 2rem 0; font-style: italic; }
+.spinner { text-align: center; padding: 2rem; opacity: 0.3; font-style: italic; font-size: 13px; }
+
+/* SÉPARATEUR MOIS */
+.mois-sep {
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--or-light); opacity: 0.25;
+  padding: 6px 0 4px; margin-top: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <img src="data:image/jpeg;base64,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" alt="Club 100" class="logo-img" />
+    <div>
+      <div class="header-title">Gestion des Factures</div>
+      <div class="header-sub">Club 100 Reims</div>
+      <div class="version-tag">v1</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-creer" onclick="window.location.href='facture.html'">+ Nouvelle facture</button>
+    <button class="btn-retour" onclick="window.location.href='admin.html'">← Retour</button>
+  </div>
+</div>
+
+<!-- TOTAUX PAR ANNÉE -->
+<div class="annee-block">
+  <div class="annee-titre">Totaux par année</div>
+  <div class="annee-cards" id="anneeCards">
+    <div class="spinner">Chargement…</div>
+  </div>
+</div>
+
+<!-- FILTRES -->
+<div class="filtres">
+  <select class="filtre-select" id="filtreAnnee" onchange="filtrer()">
+    <option value="">Toutes les années</option>
+  </select>
+  <select class="filtre-select" id="filtreType" onchange="filtrer()">
+    <option value="">Tous les types</option>
+    <option value="adhesion_annuelle">Adhésion annuelle</option>
+    <option value="cotisation">Cotisation</option>
+    <option value="commande_vetements">Commande vêtements</option>
+    <option value="evenement">Événement</option>
+    <option value="invite">Invité / cas particulier</option>
+    <option value="autre">Autre</option>
+  </select>
+  <select class="filtre-select" id="filtreTri" onchange="filtrer()">
+    <option value="desc">Plus récent d'abord</option>
+    <option value="asc">Plus ancien d'abord</option>
+    <option value="montant_desc">Montant décroissant</option>
+    <option value="montant_asc">Montant croissant</option>
+    <option value="nom">Nom A→Z</option>
+  </select>
+  <button class="btn-reset-filtre" onclick="resetFiltres()">✕ Réinitialiser</button>
+</div>
+
+<!-- RÉSUMÉ FILTRÉ -->
+<div class="liste-wrap">
+  <div class="liste-header">
+    <span id="listeInfo">—</span>
+    <span id="listeTotalFiltre" style="color:var(--or);font-family:'Playfair Display',serif;font-size:0.95rem;opacity:1;"></span>
+  </div>
+  <div id="listeFact"><div class="spinner">Chargement…</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+
+const TYPE_LABELS = {
+  adhesion_annuelle:   "Adhésion",
+  cotisation:          "Cotisation",
+  commande_vetements:  "Vêtements",
+  evenement:           "Événement",
+  invite:              "Invité",
+  autre:               "Autre"
+};
+const TYPE_BADGE = {
+  adhesion_annuelle:  "badge-adhesion",
+  cotisation:         "badge-adhesion",
+  commande_vetements: "badge-polo",
+  evenement:          "badge-event",
+  invite:             "badge-invite",
+  autre:              "badge-autre"
+};
+
+let toutesFactures = [];
+let sb;
+
+window.addEventListener("DOMContentLoaded", async () => {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // Vérif session admin
+  const stored = sessionStorage.getItem("club100_user");
+  if (!stored) { window.location.href = "connexion.html"; return; }
+  const user = JSON.parse(stored);
+  if (user.role !== "admin") { window.location.href = "accueil_membre.html"; return; }
+
+  await charger();
+});
+
+async function charger() {
+  const { data, error } = await sb
+    .from("factures")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    document.getElementById("listeFact").innerHTML = '<div class="empty-msg">Erreur de chargement.</div>';
+    return;
+  }
+
+  toutesFactures = data;
+  construireAnneesUI(data);
+  peuplerFiltreAnnee(data);
+  filtrer();
+}
+
+function construireAnneesUI(factures) {
+  // Grouper par année
+  const totaux = {};
+  const nbFact = {};
+  factures.forEach(f => {
+    const annee = f.created_at ? new Date(f.created_at).getFullYear() : "?";
+    totaux[annee] = (totaux[annee] || 0) + (parseFloat(f.montant) || 0);
+    nbFact[annee] = (nbFact[annee] || 0) + 1;
+  });
+
+  const annees = Object.keys(totaux).sort((a,b) => b - a);
+  const container = document.getElementById("anneeCards");
+
+  if (annees.length === 0) {
+    container.innerHTML = '<div class="empty-msg">Aucune facture.</div>';
+    return;
+  }
+
+  container.innerHTML = annees.map(a => `
+    <div class="annee-card active" onclick="filtrerParAnnee('${a}')">
+      <div class="annee-num">${a}</div>
+      <div class="annee-total">${totaux[a].toLocaleString("fr-FR", {minimumFractionDigits:2})} €</div>
+      <div class="annee-nb">${nbFact[a]} facture${nbFact[a] > 1 ? "s" : ""}</div>
+    </div>
+  `).join("");
+}
+
+function peuplerFiltreAnnee(factures) {
+  const annees = [...new Set(factures.map(f => f.created_at ? new Date(f.created_at).getFullYear() : null).filter(Boolean))].sort((a,b) => b-a);
+  const sel = document.getElementById("filtreAnnee");
+  annees.forEach(a => {
+    const opt = document.createElement("option");
+    opt.value = a;
+    opt.textContent = a;
+    sel.appendChild(opt);
+  });
+}
+
+function filtrerParAnnee(annee) {
+  document.getElementById("filtreAnnee").value = annee;
+  filtrer();
+}
+
+function resetFiltres() {
+  document.getElementById("filtreAnnee").value = "";
+  document.getElementById("filtreType").value = "";
+  document.getElementById("filtreTri").value = "desc";
+  filtrer();
+}
+
+function filtrer() {
+  const annee = document.getElementById("filtreAnnee").value;
+  const type  = document.getElementById("filtreType").value;
+  const tri   = document.getElementById("filtreTri").value;
+
+  let liste = [...toutesFactures];
+
+  if (annee) liste = liste.filter(f => f.created_at && new Date(f.created_at).getFullYear() == annee);
+  if (type)  liste = liste.filter(f => (f.type || "") === type);
+
+  // Tri
+  if (tri === "asc")          liste.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  else if (tri === "desc")    liste.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  else if (tri === "montant_desc") liste.sort((a,b) => (b.montant||0) - (a.montant||0));
+  else if (tri === "montant_asc")  liste.sort((a,b) => (a.montant||0) - (b.montant||0));
+  else if (tri === "nom")     liste.sort((a,b) => (a.membre_nom||"").localeCompare(b.membre_nom||"", "fr"));
+
+  const total = liste.reduce((s,f) => s + (parseFloat(f.montant)||0), 0);
+  document.getElementById("listeInfo").textContent = liste.length + " facture" + (liste.length > 1 ? "s" : "");
+  document.getElementById("listeTotalFiltre").textContent = liste.length > 0 ? "Total : " + total.toLocaleString("fr-FR", {minimumFractionDigits:2}) + " €" : "";
+
+  afficherListe(liste);
+}
+
+function afficherListe(liste) {
+  const container = document.getElementById("listeFact");
+  if (liste.length === 0) {
+    container.innerHTML = '<div class="empty-msg">Aucune facture pour ces critères.</div>';
+    return;
+  }
+
+  let html = "";
+  let moisCourant = "";
+
+  liste.forEach(f => {
+    const date = f.created_at ? new Date(f.created_at) : null;
+    const moisLabel = date ? date.toLocaleDateString("fr-FR", {month:"long", year:"numeric"}) : "";
+
+    if (moisLabel && moisLabel !== moisCourant) {
+      moisCourant = moisLabel;
+      html += `<div class="mois-sep">${moisLabel}</div>`;
+    }
+
+    const type     = f.type || "autre";
+    const label    = TYPE_LABELS[type] || type;
+    const badgeCls = TYPE_BADGE[type] || "badge-autre";
+    const montant  = parseFloat(f.montant || 0).toLocaleString("fr-FR", {minimumFractionDigits:2});
+    const dateStr  = date ? date.toLocaleDateString("fr-FR") : "—";
+    const desc     = f.description || "";
+    const num      = f.numero || "—";
+    const nom      = f.membre_nom || "—";
+
+    html += `
+      <div class="facture-row">
+        <div style="flex:0 0 auto;">
+          <div class="facture-num">${num}</div>
+          <div style="font-size:11px;color:var(--or-light);opacity:0.4;margin-top:2px;">${dateStr}</div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="facture-nom">${nom}</div>
+          <div class="facture-desc" title="${desc}">${desc}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="facture-montant">${montant} €</div>
+          <span class="badge-type ${badgeCls}">${label}</span>
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+</script>
+</body>
+</html>
