@@ -159,7 +159,7 @@
   <div class="box-title">Espace Connexion</div>
   <div class="error" id="errorMsg">Identifiants incorrects.</div>
   <label for="loginInput">Identifiant</label>
-  <input type="text" id="loginInput" placeholder="Prénom Nom" autocomplete="username" />
+  <input type="text" id="loginInput" placeholder="admin" autocomplete="username" />
   <label for="pwdInput">Mot de passe</label>
   <input type="password" id="pwdInput" placeholder="••••••••" autocomplete="current-password" />
   <button class="btn" id="loginBtn" onclick="doLogin()">
@@ -196,15 +196,12 @@ async function doLogin() {
 
   // Chercher le membre dans Supabase
   // Login = "Prénom Nom", mdp = prénom minuscules
-  const parts = login.split(' ');
-  const prenom = parts[0] || '';
-  const nom    = parts.slice(1).join(' ') || '';
-
   const { data, error } = await sb
     .from('membres')
     .select('*')
-    .ilike('prenom', prenom)
-    .ilike('nom', nom)
+    .ilike('prenom', login)
+    .ilike('nom', login)
+    .eq('role', 'admin')
     .single();
 
   btn.disabled = false; txt.style.display = 'block'; spin.style.display = 'none';
