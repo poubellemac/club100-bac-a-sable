@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Factures — Club 100 Reims</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+function ouvrirFacture(id) {
+  window.location.href = "facture_view.html?id=" + id;
+}
+</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -362,11 +366,18 @@ function afficherListe(liste) {
         <div style="text-align:right;flex-shrink:0;">
           <div class="facture-montant">${montant} €</div>
           <span class="badge-type ${badgeCls}">${label}</span>
+          <div style="margin-top:8px;">
+            <button onclick="ouvrirFacture(${f.id})" style="font-size:11px;padding:4px 12px;background:#C9A84C;color:#0F0F0F;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:Lato,sans-serif;">Éditer</button>
+          </div>
         </div>
       </div>`;
   });
 
   container.innerHTML = html;
+}
+
+function ouvrirFacture(id) {
+  window.location.href = "facture_view.html?id=" + id;
 }
 </script>
 </body>

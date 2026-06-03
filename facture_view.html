@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facture — Club 100 Reims</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f0f0f0;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 2rem 1rem;
+}
+
+/* BARRE D'ACTIONS (non imprimée) */
+.actions-bar {
+  width: 100%; max-width: 740px;
+  display: flex; gap: 10px; justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.btn-action {
+  padding: 9px 18px; font-size: 13px; font-weight: 700;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-family: Arial, sans-serif; letter-spacing: 0.04em;
+}
+.btn-mail  { background: #C9A84C; color: #0F0F0F; }
+.btn-print { background: #333; color: #fff; }
+.btn-retour { background: transparent; border: 1px solid #ccc; color: #555; }
+.btn-action:hover { opacity: 0.85; }
+
+/* FEUILLE A4 */
+.facture-sheet {
+  background: #fff;
+  width: 100%; max-width: 740px;
+  padding: 48px 52px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.12);
+  color: #1a1a1a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* EN-TÊTE */
+.fact-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 36px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #C9A84C;
+}
+.fact-emetteur { flex: 1; }
+.fact-emetteur-nom {
+  font-size: 17px; font-weight: 700; color: #C9A84C;
+  margin-bottom: 4px; letter-spacing: 0.03em;
+}
+.fact-emetteur-detail { font-size: 12px; color: #555; line-height: 1.7; }
+.fact-title-block { text-align: right; }
+.fact-title {
+  font-size: 24px; font-weight: 700; color: #1a1a1a;
+  letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 8px;
+}
+.fact-numero { font-size: 13px; color: #C9A84C; font-weight: 700; margin-bottom: 4px; }
+.fact-date   { font-size: 12px; color: #777; }
+
+/* DESTINATAIRE */
+.fact-destinataire {
+  margin-bottom: 32px;
+}
+.fact-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+  text-transform: uppercase; color: #999; margin-bottom: 8px;
+}
+.fact-dest-nom { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+.fact-dest-detail { font-size: 12px; color: #555; line-height: 1.7; margin-top: 2px; }
+
+/* TABLEAU */
+.fact-table {
+  width: 100%; border-collapse: collapse;
+  margin-bottom: 24px;
+}
+.fact-table th {
+  background: #f5f5f5; border-bottom: 1px solid #ddd;
+  padding: 10px 12px; text-align: left;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #777;
+}
+.fact-table th:last-child, .fact-table td:last-child { text-align: right; }
+.fact-table td {
+  padding: 14px 12px; border-bottom: 1px solid #eee;
+  font-size: 13px; color: #1a1a1a;
+}
+.fact-table tr:last-child td { border-bottom: none; }
+
+/* TOTAL */
+.fact-total-block {
+  display: flex; justify-content: flex-end; margin-bottom: 28px;
+}
+.fact-total-table { width: 260px; }
+.fact-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px;
+}
+.fact-total-row:last-child {
+  border-bottom: none; padding-top: 10px; margin-top: 4px;
+  border-top: 2px solid #C9A84C; font-weight: 700; font-size: 15px;
+}
+.fact-total-row span:last-child { color: #C9A84C; }
+
+/* PAIEMENT */
+.fact-paiement {
+  background: #fafafa; border: 1px solid #eee; border-radius: 6px;
+  padding: 14px 16px; margin-bottom: 24px; font-size: 12px; color: #555;
+  line-height: 1.8;
+}
+.fact-paiement strong { color: #1a1a1a; }
+
+/* PIED */
+.fact-footer {
+  border-top: 1px solid #eee; padding-top: 16px;
+  font-size: 11px; color: #aaa; line-height: 1.7; text-align: center;
+}
+
+/* STATUT BADGE */
+.statut-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; margin-left: 10px;
+  vertical-align: middle;
+}
+.statut-attente { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+.statut-paye    { background: #d4edda; color: #155724; border: 1px solid #28a745; }
+
+/* IMPRESSION */
+@media print {
+  body { background: #fff; padding: 0; }
+  .actions-bar { display: none; }
+  .facture-sheet { box-shadow: none; padding: 32px 40px; }
+}
+
+/* CHARGEMENT */
+.loading { text-align: center; padding: 3rem; color: #999; font-style: italic; }
+.error   { text-align: center; padding: 2rem; color: #c00; }
+</style>
+</head>
+<body>
+
+<div class="actions-bar" id="actionsBar" style="display:none;">
+  <button class="btn-action btn-retour" onclick="window.location.href='factures_admin.html'">← Retour</button>
+  <button class="btn-action btn-print" onclick="window.print()">🖨 Imprimer</button>
+  <button class="btn-action btn-mail" onclick="envoyerParMail()" id="btnMail">✉ Envoyer par mail</button>
+</div>
+
+<div class="facture-sheet" id="factureSheet">
+  <div class="loading" id="loadMsg">Chargement de la facture…</div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+const EJS_PUBLIC   = "x9cMeFn-4R6EbOHdS";
+const EJS_SERVICE  = "service_eh2k91k";
+const TMPL_MEMBRE  = "template_ic5fplw";
+
+const TYPE_LABELS = {
+  adhesion_annuelle:   "Cotisation — Adhésion annuelle",
+  adhesion:            "Cotisation — Adhésion",
+  cotisation:          "Cotisation annuelle",
+  commande_vetements:  "Commande vêtements",
+  evenement:           "Participation événement",
+  invite:              "Invité / cas particulier",
+  autre:               "Prestation diverse"
+};
+
+const ASSO = {
+  nom:     "Club 100 Reims",
+  adresse: "C3 Allée Alberto Santos Dumont",
+  cp:      "51100 Reims",
+  rna:     "RNA : W513008995",
+  email:   "club100reims@gmail.com",
+  president: "Président : Pierre Bernardin"
+};
+
+let factureCourante = null;
+let membreCourant = null;
+let sb;
+
+window.addEventListener("DOMContentLoaded", async () => {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Vérif session admin
+  const stored = sessionStorage.getItem("club100_user");
+  if (!stored) { window.location.href = "connexion.html"; return; }
+  const user = JSON.parse(stored);
+  if (user.role !== "admin") { window.location.href = "accueil_membre.html"; return; }
+
+  // Récupérer id depuis URL
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+  if (!id) {
+    document.getElementById("loadMsg").textContent = "Facture introuvable — id manquant.";
+    document.getElementById("loadMsg").className = "error";
+    return;
+  }
+
+  await chargerFacture(id);
+});
+
+async function chargerFacture(id) {
+  const { data, error } = await sb
+    .from("factures")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    document.getElementById("loadMsg").textContent = "Facture introuvable.";
+    document.getElementById("loadMsg").className = "error";
+    return;
+  }
+
+  factureCourante = data;
+
+  // Chercher le membre dans la table membres pour récupérer email + adresse
+  const nomParts = (data.membre_nom || "").split(" ");
+  if (nomParts.length >= 2) {
+    const { data: membres } = await sb
+      .from("membres")
+      .select("email, adresse, telephone, prenom, nom")
+      .ilike("nom", nomParts[0])
+      .limit(5);
+    // Chercher le bon membre par correspondance nom complet
+    if (membres && membres.length > 0) {
+      membreCourant = membres.find(m =>
+        (m.prenom + " " + m.nom).toLowerCase() === data.membre_nom.toLowerCase()
+      ) || membres[0];
+    }
+  }
+
+  afficherFacture(data);
+  document.getElementById("actionsBar").style.display = "flex";
+}
+
+function afficherFacture(f) {
+  const date = f.created_at ? new Date(f.created_at).toLocaleDateString("fr-FR") : "—";
+  const montant = parseFloat(f.montant || 0).toLocaleString("fr-FR", {minimumFractionDigits:2});
+  const type = TYPE_LABELS[f.type] || f.type || "Prestation";
+  const desc = f.description || type;
+  const statut = f.statut === "paye" ? "payé" : "en attente";
+  const badgeCls = f.statut === "paye" ? "statut-paye" : "statut-attente";
+
+  const emailMembre = membreCourant ? membreCourant.email : "—";
+  const adresseMembre = membreCourant ? (membreCourant.adresse || "") : "";
+  const nomMembre = f.membre_nom || "—";
+
+  const html = `
+    <!-- EN-TÊTE -->
+    <div class="fact-header">
+      <div class="fact-emetteur">
+        <div class="fact-emetteur-nom">${ASSO.nom}</div>
+        <div class="fact-emetteur-detail">
+          ${ASSO.adresse}<br>
+          ${ASSO.cp}<br>
+          ${ASSO.rna}<br>
+          ${ASSO.email}
+        </div>
+      </div>
+      <div class="fact-title-block">
+        <div class="fact-title">Facture</div>
+        <div class="fact-numero">N° ${f.numero || "—"}</div>
+        <div class="fact-date">Date d'émission : ${date}</div>
+        <div style="margin-top:8px;">
+          <span class="statut-badge ${badgeCls}">${statut}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DESTINATAIRE -->
+    <div class="fact-destinataire">
+      <div class="fact-label">Destinataire</div>
+      <div class="fact-dest-nom">${nomMembre}</div>
+      <div class="fact-dest-detail">
+        ${adresseMembre ? adresseMembre + "<br>" : ""}
+        ${emailMembre !== "—" ? emailMembre : ""}
+      </div>
+    </div>
+
+    <!-- TABLEAU PRESTATION -->
+    <table class="fact-table">
+      <thead>
+        <tr>
+          <th style="width:55%">Désignation</th>
+          <th style="width:10%">Qté</th>
+          <th style="width:20%">Prix unitaire</th>
+          <th style="width:15%">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>${desc}</td>
+          <td>1</td>
+          <td>${montant} €</td>
+          <td>${montant} €</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- TOTAL -->
+    <div class="fact-total-block">
+      <div class="fact-total-table">
+        <div class="fact-total-row">
+          <span>Sous-total HT</span>
+          <span>${montant} €</span>
+        </div>
+        <div class="fact-total-row">
+          <span>TVA</span>
+          <span>Non applicable</span>
+        </div>
+        <div class="fact-total-row">
+          <span>Total à régler</span>
+          <span>${montant} €</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAIEMENT -->
+    <div class="fact-paiement">
+      <strong>Règlement :</strong> ${f.statut === "paye" ? "Réglé" : "À régler par virement bancaire"}<br>
+      <strong>IBAN :</strong> FR76 1020 6000 0198 7559 9124 403<br>
+      <strong>Référence virement :</strong> ${f.numero || "—"}
+    </div>
+
+    <!-- PIED -->
+    <div class="fact-footer">
+      ${ASSO.nom} — Association loi 1901 à but non lucratif<br>
+      ${ASSO.adresse}, ${ASSO.cp} — ${ASSO.president}<br>
+      TVA non applicable, art. 293 B du CGI — ${ASSO.rna}
+    </div>
+  `;
+
+  document.getElementById("factureSheet").innerHTML = html;
+}
+
+async function envoyerParMail() {
+  if (!factureCourante) return;
+  if (!membreCourant || !membreCourant.email) {
+    alert("Email du membre introuvable — vérifiez dans Supabase.");
+    return;
+  }
+
+  const btn = document.getElementById("btnMail");
+  btn.disabled = true;
+  btn.textContent = "Envoi…";
+
+  const f = factureCourante;
+  const montant = parseFloat(f.montant || 0).toLocaleString("fr-FR", {minimumFractionDigits:2});
+  const date = f.created_at ? new Date(f.created_at).toLocaleDateString("fr-FR") : "—";
+  const type = TYPE_LABELS[f.type] || f.type || "Prestation";
+  const nomParts = (f.membre_nom || "").split(" ");
+  const prenom = membreCourant.prenom || nomParts[0] || "";
+  const nom = membreCourant.nom || nomParts.slice(1).join(" ") || "";
+
+  // Lien vers cette page
+  const lienFacture = window.location.origin + window.location.pathname + "?id=" + f.id;
+
+  try {
+    await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service_id:  EJS_SERVICE,
+        template_id: TMPL_MEMBRE,
+        user_id:     EJS_PUBLIC,
+        template_params: {
+          to_email:       membreCourant.email,
+          prenom:         prenom,
+          nom:            nom,
+          adresse:        membreCourant.adresse || "",
+          titre:          type,
+          contenu:        "Veuillez trouver ci-dessous votre facture. Vous pouvez également la consulter en ligne via le lien : " + lienFacture,
+          description:    f.description || type,
+          numero_facture: f.numero || "—",
+          date_facture:   date,
+          montant:        montant,
+          mode_paiement:  "Virement bancaire — IBAN FR76 1020 6000 0198 7559 9124 403"
+        }
+      })
+    });
+
+    btn.textContent = "✓ Envoyé !";
+    setTimeout(() => { btn.disabled = false; btn.textContent = "✉ Envoyer par mail"; }, 3000);
+  } catch(e) {
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = "✉ Envoyer par mail";
+    alert("Erreur envoi mail. Réessayez.");
+  }
+}
+</script>
+</body>
+</html>
