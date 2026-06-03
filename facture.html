@@ -889,51 +889,63 @@ async function validerEtGenerer() {
     return;
   }
 
-  // 2. Sauvegarder dans Supabase
+  // 2. Sauvegarder dans Supabase (structure unifiée)
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
       method: 'POST',
       headers: { ...supaHeaders(), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({
-        numero:          d.numero,
-        prenom:          d.prenom,
-        nom:             d.nom,
-        mail:            d.mail,
-        adresse:         d.adresse,
-        type_prestation: d.type,
-        description:     d.description,
-        date_prestation: d.date_prestation,
-        montant:         d.montant,
-        paiement:        d.paiement,
-        ref_interne:     d.ref_interne,
-        date_emission:   d.date_emission
+        numero:      d.numero,
+        type:        d.type || 'invite',
+        membre_nom:  d.prenom + ' ' + d.nom,
+        montant:     d.montant,
+        statut:      'en_attente',
+        description: d.description
       })
     });
     toast('✓ Facture archivée', 'success');
   } catch(e) {
-    toast('⚠ Archivage Supabase échoué', 'error');
+    toast('⚠ Archivage Supabase echoue', 'error');
   }
 
-  // 3. Mail récap admin via EmailJS
-  try {
-    if (typeof emailjs !== 'undefined') {
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-        liste: `NOUVELLE FACTURE\n\n` +
-               `N° : ${d.numero}\n` +
-               `Date : ${formatDate(d.date_emission)}\n` +
-               `Membre : ${d.prenom} ${d.nom}\n` +
-               `Mail : ${d.mail}\n` +
-               `Prestation : ${typeLabels[d.type]}\n` +
-               `Description : ${d.description}\n` +
-               `Montant : ${d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2})} €\n` +
-               `Paiement : ${paiementLabels[d.paiement]}\n` +
-               (d.ref_interne ? `Réf. : ${d.ref_interne}` : '')
-      });
-      toast('✓ Mail récap envoyé', 'success');
-    }
-  } catch(e) {
-    console.warn('EmailJS:', e);
+  // 3. Mail membre — facture en attente de paiement
+  const EJS_PUB = "x9cMeFn-4R6EbOHdS";
+  const EJS_SVC = "service_eh2k91k";
+  async function envoyerMail(tpl, params) {
+    return fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ service_id: EJS_SVC, template_id: tpl, user_id: EJS_PUB, template_params: params })
+    });
   }
+  try {
+    await envoyerMail("template_ic5fplw", {
+      to_email:       d.mail,
+      prenom:         d.prenom,
+      nom:            d.nom,
+      adresse:        d.adresse || '',
+      titre:          typeLabels[d.type] || 'Facture',
+      contenu:        "Votre facture est enregistree. Merci de regler par virement en indiquant la reference ci-dessous.",
+      description:    d.description,
+      numero_facture: d.numero,
+      date_facture:   new Date().toLocaleDateString('fr-FR'),
+      montant:        d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2}),
+      mode_paiement:  paiementLabels[d.paiement] || d.paiement
+    });
+    toast('✓ Mail envoye au membre', 'success');
+  } catch(e) { console.warn('Mail membre:', e); }
+
+  // 4. Mail asso — notification nouvelle facture
+  try {
+    await envoyerMail("template_qn9er0w", {
+      titre:     "Nouvelle facture en attente — " + d.numero,
+      prenom:    d.prenom,
+      nom:       d.nom,
+      email:     d.mail,
+      telephone: '',
+      detail:    (typeLabels[d.type] || d.type) + "\n" + d.description + "\nMontant : " + d.montant + " EUR\nPaiement : " + (paiementLabels[d.paiement] || d.paiement)
+    });
+  } catch(e) { console.warn('Mail asso:', e); }
 
   // 4. Reset formulaire + nouveau numéro
   resetForm();

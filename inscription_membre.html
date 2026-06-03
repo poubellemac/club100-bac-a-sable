@@ -297,23 +297,22 @@
       return showError('Erreur : ' + error.message);
     }
 
-    // Mail 1 — confirmation au membre
+    // Mail 1 — accusé de réception au membre (même template que l'asso, simple)
     try {
       await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           service_id: EJS_SERVICE,
-          template_id: EJS_TEMPLATE,
+          template_id: 'template_qn9er0w',
           user_id: EJS_PUBLIC,
           template_params: {
-            to_email: email,
-            prenom, nom,
-            titre: "Demande d\'adhésion reçue",
-            contenu: "Votre demande d\'adhésion au Club 100 Reims a bien été reçue. Votre compte sera activé après réception de votre règlement.",
-            numero_facture: 'En attente de validation',
-            montant: cotisation,
-            mode_paiement: paiement
+            titre:     "Demande d'adhesion recue",
+            prenom:    prenom,
+            nom:       nom,
+            email:     email,
+            telephone: tel,
+            detail:    "Votre demande d'adhesion au Club 100 Reims a bien ete recue.\nCotisation : " + cotisation + " EUR\nReglement : " + paiement + "\n\nVotre compte sera active apres verification de votre paiement. Vous recevrez votre facture a ce moment-la."
           }
         })
       });
@@ -329,11 +328,12 @@
           template_id: EJS_TEMPLATE2,
           user_id: EJS_PUBLIC2,
           template_params: {
-            titre: "Nouvelle demande d'adhésion",
-            prenom, nom,
-            email,
+            titre:     "Nouvelle demande d'adhesion",
+            prenom:    prenom,
+            nom:       nom,
+            email:     email,
             telephone: tel,
-            detail: 'Cotisation : ' + cotisation + '€\nRèglement : ' + paiement
+            detail:    "Cotisation : " + cotisation + " EUR\nReglement : " + paiement + "\n→ A valider dans admin apres reception du paiement"
           }
         })
       });

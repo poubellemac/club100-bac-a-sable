@@ -407,29 +407,29 @@ async function validerCommande() {
       description: "Commande vetements - floquage : " + floque + " - " + recap
     }]);
 
-    // ── Mail membre (facture) ──
+    // ── Mail membre — commande enregistree, paiement attendu ──
     await envoyerMail(TMPL_MEMBRE, {
       to_email:       emailMembre,
       prenom:         prenom,
       nom:            nom,
       adresse:        adresseMembre,
-      titre:          "Commande vetements",
-      contenu:        "Votre commande a bien ete recue. Elle sera traitee apres reception de votre virement. Floquage : " + floque,
+      titre:          "Commande vetements enregistree",
+      contenu:        "Votre commande a bien ete recue. Merci de regler par virement en indiquant la reference ci-dessous. Votre facture definitive vous sera envoyee apres confirmation du paiement. Floquage : " + floque,
       numero_facture: numeroFacture,
       date_facture:   dateJour,
       description:    recap,
       montant:        totalNum,
-      mode_paiement:  "Virement bancaire"
+      mode_paiement:  "Virement bancaire — IBAN FR76 1020 6000 0198 7559 9124 403"
     });
 
-    // ── Mail asso (notification) ──
+    // ── Mail asso — nouvelle commande a valider ──
     await envoyerMail(TMPL_ASSO, {
-      titre:     "Nouvelle commande vetements",
+      titre:     "Nouvelle commande vetements a valider",
       prenom:    prenom,
       nom:       nom,
       email:     emailMembre,
       telephone: telMembre,
-      detail:    "Floquage : " + floque + "\n" + recap + "\nTotal : " + totalNum + " EUR\nFacture n " + numeroFacture
+      detail:    "Floquage : " + floque + "\n" + recap + "\nTotal : " + totalNum + " EUR\nRef : " + numeroFacture + "\n→ A valider dans admin apres reception du paiement"
     });
 
     document.getElementById("formContent").classList.add("hidden");
