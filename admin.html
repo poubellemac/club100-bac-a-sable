@@ -260,12 +260,18 @@
 <div id="attenteList"><div class="empty-msg">Chargement…</div></div>
 </div>
 
+<!-- FACTURES EN ATTENTE DE PAIEMENT -->
+<div class="section-label" style="margin-top:1.5rem">Factures en attente de paiement</div>
+<div class="attente-card">
+  <div id="facturesAttenteList"><div class="empty-msg">Chargement…</div></div>
+</div>
+
 <script>
 const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
 const EJS_PUBLIC   = "x9cMeFn-4R6EbOHdS";
 const EJS_SERVICE  = "service_eh2k91k";
-let sb, user, triCourant = 'date-asc', membresAttente = [];
+let sb, user, triCourant = 'date-asc', membresAttente = [], facturesAttente = [];
 
 window.addEventListener('DOMContentLoaded', async () => {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -278,6 +284,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   loadStats();
   loadAttente();
+  loadFacturesAttente();
 });
 
 async function loadStats() {
@@ -453,6 +460,108 @@ function copierLien(e, url) {
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '📋 Copier le lien'; btn.classList.remove('copied'); }, 2000);
   });
+}
+
+async function loadFacturesAttente() {
+  const { data } = await sb.from('factures').select('*').eq('statut','en_attente').order('created_at', {ascending:true});
+  facturesAttente = data || [];
+  afficherFacturesAttente();
+}
+
+function afficherFacturesAttente() {
+  const list = document.getElementById('facturesAttenteList');
+  if (!facturesAttente.length) {
+    list.innerHTML = '<div class="empty-msg">Aucune facture en attente ✓</div>';
+    return;
+  }
+  const TYPE_LABELS = {
+    adhesion: "Adhesion", adhesion_annuelle: "Adhesion annuelle",
+    cotisation: "Cotisation", commande_vetements: "Vetements",
+    evenement: "Evenement", invite: "Invite", autre: "Autre"
+  };
+  list.innerHTML = facturesAttente.map(f => `
+    <div class="membre-row" id="fact-row-${f.id}">
+      <div class="membre-info">
+        <div class="membre-nom">${f.membre_nom || "—"}</div>
+        <div class="membre-detail">${f.numero || "—"} · ${parseFloat(f.montant||0).toLocaleString("fr-FR",{minimumFractionDigits:2})} € · ${TYPE_LABELS[f.type]||f.type||"—"}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-valider" onclick="validerFacture(${f.id})">Valider</button>
+        <button class="btn-supprimer" onclick="supprimerFacture(${f.id})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function validerFacture(id) {
+  if (!confirm("Confirmer la reception du paiement et valider cette facture ?")) return;
+  const facture = facturesAttente.find(f => f.id === id);
+  if (!facture) return;
+
+  // 1. Passer statut a paye
+  const { error } = await sb.from('factures').update({ statut: 'paye' }).eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+
+  // 2. Chercher email du membre dans la table membres
+  const nomParts = (facture.membre_nom || '').trim().split(' ');
+  let emailMembre = '', prenomMembre = nomParts[0] || '', nomMembre = nomParts.slice(1).join(' ') || '', adresseMembre = '';
+  if (nomParts.length >= 2) {
+    const { data: membres } = await sb.from('membres')
+      .select('email, adresse, prenom, nom')
+      .ilike('nom', nomParts[nomParts.length-1])
+      .limit(5);
+    if (membres && membres.length > 0) {
+      const match = membres.find(m =>
+        (m.prenom + ' ' + m.nom).toLowerCase() === facture.membre_nom.toLowerCase()
+      ) || membres[0];
+      emailMembre = match.email || '';
+      adresseMembre = match.adresse || '';
+      prenomMembre = match.prenom || prenomMembre;
+      nomMembre = match.nom || nomMembre;
+    }
+  }
+
+  // 3. Mail au membre avec lien vers la facture
+  if (emailMembre) {
+    const lienFacture = 'https://poubellemac.github.io/club100-bac-a-sable/facture_view.html?id=' + id;
+    try {
+      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: EJS_SERVICE,
+          template_id: 'template_ic5fplw',
+          user_id: EJS_PUBLIC,
+          template_params: {
+            to_email:       emailMembre,
+            prenom:         prenomMembre,
+            nom:            nomMembre,
+            adresse:        adresseMembre,
+            titre:          "Paiement recu — Facture " + (facture.numero || ''),
+            contenu:        "Votre paiement a bien ete recu. Vous pouvez consulter votre facture en ligne : " + lienFacture,
+            description:    facture.description || '',
+            numero_facture: facture.numero || '',
+            date_facture:   new Date().toLocaleDateString('fr-FR'),
+            montant:        parseFloat(facture.montant || 0).toLocaleString('fr-FR', {minimumFractionDigits:2}),
+            mode_paiement:  "Virement bancaire"
+          }
+        })
+      });
+    } catch(e) { console.error('Erreur mail facture:', e); }
+  }
+
+  // 4. Retirer de la liste
+  facturesAttente = facturesAttente.filter(f => f.id !== id);
+  afficherFacturesAttente();
+  alert('Facture ' + (facture.numero || '') + ' validee' + (emailMembre ? ' — Mail envoye a ' + emailMembre : ''));
+}
+
+async function supprimerFacture(id) {
+  if (!confirm("Supprimer cette facture ? Action irreversible.")) return;
+  const { error } = await sb.from('factures').delete().eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  facturesAttente = facturesAttente.filter(f => f.id !== id);
+  afficherFacturesAttente();
 }
 
 function logout() {
