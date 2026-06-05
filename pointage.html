@@ -23,18 +23,11 @@
   body { font-family: 'Lato', sans-serif; background: var(--noir); color: var(--blanc); min-height: 100vh; padding: 0; }
 
   /* LOGIN */
-  #loginScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem 1rem; }
-  .login-box { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 16px; padding: 2rem 1.5rem; text-align: center; width: 100%; max-width: 360px; }
-  .login-logo { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--or); margin-bottom: 0.25rem; }
-  .login-sub { font-size: 13px; color: var(--or-light); opacity: 0.6; margin-bottom: 1.5rem; }
-  .login-error { font-size: 13px; color: #E57373; margin-bottom: 10px; display: none; }
-  input[type="password"] { width: 100%; padding: 12px 14px; font-size: 16px; font-family: 'Lato', sans-serif; border: 1px solid var(--border); border-radius: 10px; background: var(--noir); color: var(--blanc); outline: none; margin-bottom: 1rem; text-align: center; letter-spacing: 0.15em; }
-  input[type="password"]:focus { border-color: var(--or); }
   .btn-gold { width: 100%; padding: 14px; background: var(--or); color: var(--noir); border: none; border-radius: 10px; font-size: 16px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; }
   .btn-gold:hover { background: var(--or-light); }
 
   /* APP */
-  #appScreen { display: none; }
+  #appScreen { display: block; }
   .top-bar {
     position: sticky; top: 0; z-index: 50;
     background: var(--noir-soft); border-bottom: 1px solid var(--border);
@@ -94,17 +87,6 @@
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="loginScreen">
-  <div class="login-box">
-    <div class="login-logo">Club 100 — Pointage</div>
-    <div class="login-sub">Accès réservé aux organisateurs</div>
-    <input type="password" id="pwdInput" placeholder="••••••" />
-    <div class="login-error" id="loginError">Mot de passe incorrect.</div>
-    <button class="btn-gold" onclick="checkLogin()">Entrer</button>
-  </div>
-</div>
-
 <!-- APP -->
 <div id="appScreen">
   <div class="top-bar">
@@ -162,22 +144,8 @@
   let pointage = {}; // { id: { present: bool|null, paye: bool|null } }
   let currentFilter = 'tous';
 
-  // ─── LOGIN ────────────────────────────────────────────────
-  function checkLogin() {
-    if (document.getElementById('pwdInput').value === ADMIN_PWD) {
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('appScreen').style.display = 'block';
-      init();
-    } else {
-      document.getElementById('loginError').style.display = 'block';
-    }
-  }
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') checkLogin();
-  });
-
   // ─── INIT ────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => init());
   async function init() {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     emailjs.init(EJS_PUBLIC);
