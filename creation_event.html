@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Créer un événement — Club 100 Reims</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --noir: #0F0F0F; --noir-soft: #1A1A1A;
+    --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+    --blanc: #F5F0E8; --gris-mid: #444;
+    --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+    --green: #2E6B3E; --red: #8B1A1A;
+  }
+  body { font-family: 'Lato', sans-serif; background: var(--noir); color: var(--blanc); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem 4rem; background-image: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 65%); }
+
+  .header { width: 100%; max-width: 560px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .header-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.1rem; }
+  .header-sub { font-size: 11px; color: var(--or-light); opacity: 0.4; letter-spacing: 0.1em; text-transform: uppercase; }
+  .btn-retour { font-size: 12px; color: var(--or-light); opacity: 0.5; background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 14px; cursor: pointer; font-family: 'Lato', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; transition: opacity 0.2s; }
+  .btn-retour:hover { opacity: 1; }
+
+  .card { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 14px; padding: 1.75rem 1.5rem; max-width: 560px; width: 100%; margin-bottom: 1.25rem; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 13px; color: var(--or); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); letter-spacing: 0.05em; text-transform: uppercase; }
+  label { display: block; font-size: 12px; font-weight: 700; color: var(--or-light); margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  input[type="text"], textarea { width: 100%; padding: 10px 14px; font-size: 15px; font-family: 'Lato', sans-serif; border: 1px solid var(--border); border-radius: 8px; background: var(--noir); color: var(--blanc); outline: none; transition: border-color 0.2s; margin-bottom: 1.25rem; }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, textarea:focus { border-color: var(--or); }
+  input::placeholder, textarea::placeholder { color: rgba(245,240,232,0.25); }
+
+  .switch-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .switch-row label { margin-bottom: 0; font-size: 14px; text-transform: none; letter-spacing: 0; }
+  .switch { position: relative; display: inline-block; width: 46px; height: 26px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--gris-mid); transition: .3s; border-radius: 26px; }
+  .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background: white; transition: .3s; border-radius: 50%; }
+  input:checked + .slider { background: var(--green); }
+  input:checked + .slider:before { transform: translateX(20px); }
+
+  .btn-save { width: 100%; padding: 14px; background: var(--or); color: var(--noir); border: none; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.18s; }
+  .btn-save:hover { background: var(--or-light); }
+
+  .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--or); color: var(--noir); padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 700; transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">Créer / Modifier un événement</div>
+    <div class="header-sub">Club 100 Reims</div>
+  </div>
+  <button class="btn-retour" onclick="window.location.href='admin.html'">← Retour</button>
+</div>
+
+<div class="card">
+  <div class="card-title">⚙ Paramètres de l'événement</div>
+
+  <div class="switch-row">
+    <label>Inscriptions ouvertes</label>
+    <label class="switch"><input type="checkbox" id="evActif" checked><span class="slider"></span></label>
+  </div>
+
+  <label>Titre</label>
+  <input type="text" id="adminTitre" placeholder="Ex: Côte de Bœuf & Frites" />
+
+  <label>Tagline</label>
+  <input type="text" id="adminTagline" placeholder="Ex: L'édition annuelle tant attendue !" />
+
+  <label>Date (texte affiché)</label>
+  <input type="text" id="adminDate" placeholder="Ex: 19 juin 2026" />
+
+  <label>Lieu (nom affiché)</label>
+  <input type="text" id="adminLieu" placeholder="Ex: Distillerie Guillon – Louvois" />
+
+  <label>Adresse (pour Google Maps)</label>
+  <input type="text" id="adminAdresse" placeholder="Ex: Hameau de Vertuelle, 51150 Louvois" />
+
+  <label>Description courte</label>
+  <textarea id="adminDescription" placeholder="Ex: Une soirée conviviale autour d'un bon repas..."></textarea>
+
+  <label>Prix / conditions</label>
+  <input type="text" id="adminPrix" placeholder="Ex: 30 € par personne + une bouteille" />
+
+  <button class="btn-save" onclick="saveEvent()">💾 Enregistrer l'événement</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+let sb;
+
+window.addEventListener('DOMContentLoaded', async () => {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  await loadParametres();
+});
+
+async function loadParametres() {
+  const { data, error } = await sb.from('parametres').select('*').eq('id', 1).single();
+  if (error || !data) return;
+  document.getElementById('adminTitre').value = data.titre || '';
+  document.getElementById('adminTagline').value = data.tagline || '';
+  document.getElementById('adminDate').value = data.date_affichee || '';
+  document.getElementById('adminLieu').value = data.lieu_nom || '';
+  document.getElementById('adminAdresse').value = data.lieu_adresse || '';
+  document.getElementById('adminDescription').value = data.description || '';
+  document.getElementById('adminPrix').value = data.prix_conditions || '';
+  document.getElementById('evActif').checked = data.inscriptions_ouvertes !== false;
+}
+
+async function saveEvent() {
+  const { error } = await sb.from('parametres').upsert({
+    id: 1,
+    titre:                 document.getElementById('adminTitre').value.trim(),
+    tagline:               document.getElementById('adminTagline').value.trim(),
+    date_affichee:         document.getElementById('adminDate').value.trim(),
+    lieu_nom:              document.getElementById('adminLieu').value.trim(),
+    lieu_adresse:          document.getElementById('adminAdresse').value.trim(),
+    description:           document.getElementById('adminDescription').value.trim(),
+    prix_conditions:       document.getElementById('adminPrix').value.trim(),
+    inscriptions_ouvertes: document.getElementById('evActif').checked
+  });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  showToast("✅ Événement enregistré !");
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
