@@ -176,7 +176,7 @@
 <div class="stats-bar">
   <div class="stat-card" onclick="afficherListe('tous')" style="cursor:pointer;" title="Voir tous les membres"><div class="stat-num" id="statMembres">—</div><div class="stat-lbl">Membres</div></div>
   <div class="stat-card" onclick="afficherListe('actif')" style="cursor:pointer;" title="Voir les membres actifs"><div class="stat-num" id="statActifs">—</div><div class="stat-lbl">Actifs</div></div>
-  <div class="stat-card" onclick="afficherListe('en_attente')" style="cursor:pointer;" title="Voir les membres en attente"><div class="stat-num" id="statAttente">—</div><div class="stat-lbl">En attente</div></div>
+  <div class="stat-card" onclick="afficherListe('en_attente')" style="cursor:pointer;" title="Voir les membres en attente"><div class="stat-num" id="statAttente">—</div><div class="stat-lbl">Action en attente</div></div>
 </div>
 
 <!-- LISTE MEMBRES (affichée au clic sur stats) -->
@@ -394,7 +394,7 @@ async function supprimerFacture(id) {
 }
 
 async function loadStats() {
-  const { count: total } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre');
+  const { count: total } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre').eq('statut','actif');
   const { count: actifs } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre').eq('statut','actif');
   const { count: att } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre').eq('statut','en_attente');
   document.getElementById('statMembres').textContent = total ?? 0;
