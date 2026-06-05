@@ -88,7 +88,6 @@
   .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background: white; transition: .3s; border-radius: 50%; }
   input:checked + .slider { background: var(--green); }
   input:checked + .slider:before { transform: translateX(20px); }
-  #loginPanel { display: none; max-width: 360px; width: 100%; flex-direction: column; align-items: center; }
   .login-box { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 14px; padding: 2rem 1.5rem; text-align: center; width: 100%; }
   .login-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.2rem; margin-bottom: 1.5rem; }
   .login-error { font-size: 13px; color: #E57373; margin-bottom: 10px; display: none; }
@@ -157,19 +156,8 @@
     <div id="listContainer"><p class="empty-msg">Aucune réponse pour l'instant.</p></div>
   </div>
 
-  <a href="#" class="admin-link" onclick="showLogin(); return false;">⚙ admin</a>
 </div>
 
-<!-- ===== LOGIN ===== -->
-<div id="loginPanel">
-  <div class="login-box">
-    <div class="login-title">🔐 Accès admin</div>
-    <input type="password" id="pwdInput" placeholder="Mot de passe" />
-    <div class="login-error" id="loginError">Mot de passe incorrect.</div>
-    <button class="submit-btn" onclick="checkLogin()">Entrer</button>
-    <button class="admin-back-btn" style="margin-top:0.75rem;" onclick="showPublic()">← Retour</button>
-  </div>
-</div>
 
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
@@ -239,6 +227,8 @@
     await loadParticipants();
     document.getElementById('statusMsg').textContent = '✅ Données synchronisées en temps réel.';
     setInterval(loadParticipants, 30000);
+    // Ouvrir directement le panneau admin si paramètre ?admin=1
+    if (new URLSearchParams(window.location.search).get('admin') === '1') showAdmin();
   });
 
   async function loadParametres() {
@@ -353,26 +343,14 @@
   }
 
   // ─── ADMIN ────────────────────────────────────────────────
-  function showLogin() {
+  function showAdmin() {
     document.getElementById('publicPanel').style.display = 'none';
-    document.getElementById('loginPanel').style.display = 'flex';
-    document.getElementById('adminPanel').style.display = 'none';
-  }
-  function checkLogin() {
-    if (document.getElementById('pwdInput').value === ADMIN_PWD) {
-      document.getElementById('loginPanel').style.display = 'none';
-      document.getElementById('adminPanel').style.display = 'flex';
-      populateAdminForm(); renderAdminList();
-    } else {
-      document.getElementById('loginError').style.display = 'block';
-    }
+    document.getElementById('adminPanel').style.display = 'flex';
+    populateAdminForm(); renderAdminList();
   }
   function showPublic() {
     document.getElementById('publicPanel').style.display = 'block';
-    document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'none';
-    document.getElementById('pwdInput').value = '';
-    document.getElementById('loginError').style.display = 'none';
   }
   function populateAdminForm() {
     document.getElementById('adminTitre').value = ev.titre;
@@ -449,9 +427,7 @@
     t.textContent = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 3000);
   }
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && document.getElementById('loginPanel').style.display === 'flex') checkLogin();
-  });
+
 </script>
 </body>
 </html>
