@@ -407,20 +407,6 @@ async function validerCommande() {
       description: "Commande vetements - floquage : " + floque + " - " + recap
     }]);
 
-    // ── Mail membre — commande enregistree, paiement attendu ──
-    await envoyerMail(TMPL_MEMBRE, {
-      to_email:       emailMembre,
-      prenom:         prenom,
-      nom:            nom,
-      adresse:        adresseMembre,
-      titre:          "Commande vetements enregistree",
-      contenu:        "Votre commande a bien ete recue. Merci de regler par virement en indiquant la reference ci-dessous. Votre facture definitive vous sera envoyee apres confirmation du paiement. Floquage : " + floque,
-      numero_facture: numeroFacture,
-      date_facture:   dateJour,
-      description:    recap,
-      montant:        totalNum,
-      mode_paiement:  "Virement bancaire — IBAN FR76 1020 6000 0198 7559 9124 403"
-    });
 
     // ── Mail asso — nouvelle commande a valider ──
     await envoyerMail(TMPL_ASSO, {
@@ -441,7 +427,7 @@ async function validerCommande() {
       lignes.map(l => "-> " + l).join("<br>") +
       "<br><strong>Total :</strong> " + totalNum + " EUR" +
       "<br><strong>Facture n° :</strong> " + numeroFacture +
-      "<br><strong>Confirmation envoyee a :</strong> " + emailMembre;
+      "<br><strong>Votre facture vous sera envoyee par mail apres validation du paiement.</strong>";
 
   } catch(e) {
     console.error(e);
