@@ -271,6 +271,19 @@
     btn.disabled = true;
     btn.textContent = 'Envoi en cours…';
 
+
+    // Anti-doublon : verifier si nom+prenom deja existant
+    const { data: doublon } = await sb.from('membres')
+      .select('id')
+      .ilike('nom', nom)
+      .ilike('prenom', prenom)
+      .limit(1);
+    if (doublon && doublon.length > 0) {
+      btn.disabled = false;
+      btn.textContent = "Envoyer ma demande d'adhesion";
+      return showError('Un membre avec ce nom et ce prenom existe deja. Contactez le club si besoin.');
+    }
+
     const ddnSanstirets = ddn.replace(/-/g, '').slice(4) + ddn.replace(/-/g, '').slice(2,4) + ddn.replace(/-/g, '').slice(0,4);
     const mdp = prenom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") + ddn.replace(/-/g, '');
 
