@@ -878,18 +878,10 @@ async function validerEtGenerer() {
   closeModal();
   const d = currentFactureData;
 
-  // 1. Générer PDF et télécharger
-  try {
-    const doc = genererPDF(d);
-    doc.save(`Facture_${d.numero}_${d.nom}.pdf`);
-    toast('✓ PDF téléchargé !', 'success');
-  } catch(e) {
-    toast('⚠ Erreur génération PDF', 'error');
-    console.error(e);
-    return;
-  }
+  const EJS_PUB = "x9cMeFn-4R6EbOHdS";
+  const EJS_SVC = "service_eh2k91k";
 
-  // 2. Sauvegarder dans Supabase (structure unifiée)
+  // 1. Sauvegarder dans Supabase — statut paye (admin a deja le paiement)
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
       method: 'POST',
@@ -899,55 +891,43 @@ async function validerEtGenerer() {
         type:        d.type || 'invite',
         membre_nom:  d.prenom + ' ' + d.nom,
         montant:     d.montant,
-        statut:      'en_attente',
+        statut:      'paye',
         description: d.description
       })
     });
-    toast('✓ Facture archivée', 'success');
+    toast('✓ Facture enregistree', 'success');
   } catch(e) {
     toast('⚠ Archivage Supabase echoue', 'error');
   }
 
-  // 3. Mail membre — facture en attente de paiement
-  const EJS_PUB = "x9cMeFn-4R6EbOHdS";
-  const EJS_SVC = "service_eh2k91k";
-  async function envoyerMail(tpl, params) {
-    return fetch("https://api.emailjs.com/api/v1.0/email/send", {
+  // 2. Mail membre avec la facture
+  try {
+    await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ service_id: EJS_SVC, template_id: tpl, user_id: EJS_PUB, template_params: params })
-    });
-  }
-  try {
-    await envoyerMail("template_ic5fplw", {
-      to_email:       d.mail,
-      prenom:         d.prenom,
-      nom:            d.nom,
-      adresse:        d.adresse || '',
-      titre:          typeLabels[d.type] || 'Facture',
-      contenu:        "Votre facture est enregistree. Merci de regler par virement en indiquant la reference ci-dessous.",
-      description:    d.description,
-      numero_facture: d.numero,
-      date_facture:   new Date().toLocaleDateString('fr-FR'),
-      montant:        d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2}),
-      mode_paiement:  paiementLabels[d.paiement] || d.paiement
+      body: JSON.stringify({
+        service_id: EJS_SVC,
+        template_id: "template_ic5fplw",
+        user_id: EJS_PUB,
+        template_params: {
+          to_email:       d.mail,
+          prenom:         d.prenom,
+          nom:            d.nom,
+          adresse:        d.adresse || '',
+          titre:          typeLabels[d.type] || 'Facture',
+          contenu:        "Votre facture a ete enregistree par le Club 100 Reims.",
+          description:    d.description,
+          numero_facture: d.numero,
+          date_facture:   new Date().toLocaleDateString('fr-FR'),
+          montant:        d.montant.toLocaleString('fr-FR', {minimumFractionDigits:2}),
+          mode_paiement:  paiementLabels[d.paiement] || d.paiement
+        }
+      })
     });
     toast('✓ Mail envoye au membre', 'success');
   } catch(e) { console.warn('Mail membre:', e); }
 
-  // 4. Mail asso — notification nouvelle facture
-  try {
-    await envoyerMail("template_qn9er0w", {
-      titre:     "Nouvelle facture en attente — " + d.numero,
-      prenom:    d.prenom,
-      nom:       d.nom,
-      email:     d.mail,
-      telephone: '',
-      detail:    (typeLabels[d.type] || d.type) + "\n" + d.description + "\nMontant : " + d.montant + " EUR\nPaiement : " + (paiementLabels[d.paiement] || d.paiement)
-    });
-  } catch(e) { console.warn('Mail asso:', e); }
-
-  // 4. Reset formulaire + nouveau numéro
+  // 3. Reset formulaire + nouveau numero
   resetForm();
   await chargerProchainNumero();
 }
