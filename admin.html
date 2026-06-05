@@ -245,6 +245,29 @@
     <button class="btn-copier" onclick="copierLien(event,'https://poubellemac.github.io/club100-bac-a-sable/commande_club100.html')" id="btn-commande_club100_html">📋 Copier le lien</button>
   </a>
 
+  <a class="tuile" href="#" onclick="toggleAdherents(event)">
+    <span class="tuile-badge badge-live">Live</span>
+    <div class="tuile-icon">👥</div>
+    <div class="tuile-nom">Adhérents</div>
+    <div class="tuile-desc">Liste des membres, tri et recherche</div>
+  </a>
+
+</div>
+
+<!-- PANEL ADHERENTS -->
+<div id="adherentsPanel" style="display:none;max-width:600px;width:100%;margin-top:1rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+    <div class="section-label" style="margin:0;">Adhérents</div>
+    <button onclick="document.getElementById('adherentsPanel').style.display='none'" style="background:none;border:none;color:var(--or-light);opacity:0.5;cursor:pointer;font-size:18px;">✕</button>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:0.75rem;flex-wrap:wrap;">
+    <button class="btn-tri active" id="adh-tri-prenom" onclick="trierAdherents('prenom')">A→Z Prénom</button>
+    <button class="btn-tri" id="adh-tri-nom" onclick="trierAdherents('nom')">A→Z Nom</button>
+    <button class="btn-tri" id="adh-tri-date" onclick="trierAdherents('date')">↑ Date</button>
+  </div>
+  <input type="text" id="adhSearch" placeholder="Rechercher..." oninput="filtrerAdherents()"
+    style="width:100%;padding:8px 12px;font-size:14px;font-family:'Lato',sans-serif;border:1px solid var(--border);border-radius:8px;background:var(--noir);color:var(--blanc);outline:none;margin-bottom:0.75rem;" />
+  <div id="adherentsList" style="background:var(--noir-soft);border:1px solid var(--border);border-radius:14px;padding:1rem;"></div>
 </div>
 
 <!-- ACTIONS EN ATTENTE -->
@@ -259,7 +282,7 @@ const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
 const EJS_PUBLIC   = "x9cMeFn-4R6EbOHdS";
 const EJS_SERVICE  = "service_eh2k91k";
-let sb, user, triCourant = 'date-asc', membresAttente = [];
+let sb, user, triCourant = 'date-asc', membresAttente = [], tousAdherents = [], triAdh = 'prenom';
 
 window.addEventListener('DOMContentLoaded', async () => {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -376,6 +399,57 @@ async function supprimerFacture(id) {
   if (!list.querySelector('.membre-row')) {
     list.innerHTML = '<div class="empty-msg">Aucune commande en attente ✓</div>';
   }
+}
+
+async function toggleAdherents(e) {
+  e.preventDefault();
+  const panel = document.getElementById('adherentsPanel');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!tousAdherents.length) await chargerAdherents();
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+async function chargerAdherents() {
+  const { data } = await sb.from('membres').select('prenom,nom,telephone,date_inscription').eq('role','membre').order('prenom');
+  tousAdherents = data || [];
+  afficherAdherents();
+}
+
+function trierAdherents(tri) {
+  triAdh = tri;
+  ['prenom','nom','date'].forEach(t => {
+    document.getElementById('adh-tri-'+t).classList.toggle('active', t === tri);
+  });
+  afficherAdherents();
+}
+
+function filtrerAdherents() {
+  afficherAdherents();
+}
+
+function afficherAdherents() {
+  const search = document.getElementById('adhSearch').value.toLowerCase();
+  let liste = tousAdherents.filter(m =>
+    (m.prenom+' '+m.nom).toLowerCase().includes(search) ||
+    (m.telephone||'').includes(search)
+  );
+  liste = [...liste].sort((a,b) => {
+    if (triAdh === 'nom') return a.nom.localeCompare(b.nom);
+    if (triAdh === 'date') return new Date(a.date_inscription) - new Date(b.date_inscription);
+    return a.prenom.localeCompare(b.prenom);
+  });
+  const el = document.getElementById('adherentsList');
+  if (!liste.length) { el.innerHTML = '<div class="empty-msg">Aucun adhérent trouvé</div>'; return; }
+  el.innerHTML = liste.map(m => `
+    <div class="membre-row" style="flex-direction:column;align-items:flex-start;gap:2px;padding:10px 0;">
+      <div class="membre-nom">${m.prenom} ${m.nom}</div>
+      <div class="membre-detail">${m.telephone || 'Pas de téléphone'}</div>
+    </div>
+  `).join('');
 }
 
 async function loadStats() {
