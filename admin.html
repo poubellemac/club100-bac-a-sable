@@ -248,22 +248,11 @@
 
 </div>
 
-<!-- FACTURES EN ATTENTE -->
-<div class="section-label" style="margin-top:1.5rem">Commandes en attente de paiement &amp; validation</div>
+<!-- ACTIONS EN ATTENTE -->
+<div class="section-label" style="margin-top:1.5rem">Actions en attente</div>
 <div class="attente-card">
-  <div id="facturesAttenteList"><div class="empty-msg">Chargement…</div></div>
-</div>
-
-<!-- MEMBRES EN ATTENTE -->
-<div class="section-label" style="margin-top:1.5rem">Membres en attente de validation</div>
-<div class="attente-card">
-  <div class="tri-bar">
-  <button class="btn-tri active" id="tri-date-asc" onclick="setTri('date-asc')">↑ Date</button>
-  <button class="btn-tri" id="tri-date-desc" onclick="setTri('date-desc')">↓ Date</button>
-  <button class="btn-tri" id="tri-nom-asc" onclick="setTri('nom-asc')">A→Z</button>
-  <button class="btn-tri" id="tri-nom-desc" onclick="setTri('nom-desc')">Z→A</button>
-</div>
-<div id="attenteList"><div class="empty-msg">Chargement…</div></div>
+  <div id="facturesAttenteList"></div>
+  <div id="attenteList"><div class="empty-msg">Chargement…</div></div>
 </div>
 
 <script>
@@ -290,14 +279,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 async function loadFacturesAttente() {
   const { data } = await sb.from('factures').select('*').eq('statut','en_attente').order('created_at', {ascending: true});
   afficherFacturesAttente(data || []);
+  checkVide();
 }
 
 function afficherFacturesAttente(factures) {
   const list = document.getElementById('facturesAttenteList');
-  if (!factures.length) {
-    list.innerHTML = '<div class="empty-msg">Aucune commande en attente ✓</div>';
-    return;
-  }
   list.innerHTML = factures.map(f => `
     <div class="membre-row" id="fact-row-${f.id}">
       <div class="membre-info">
@@ -408,27 +394,9 @@ async function loadAttente() {
   afficherAttente();
 }
 
-function setTri(tri) {
-  triCourant = tri;
-  ['date-asc','date-desc','nom-asc','nom-desc'].forEach(t => {
-    document.getElementById('tri-'+t).classList.toggle('active', t === tri);
-  });
-  afficherAttente();
-}
-
 function afficherAttente() {
   const list = document.getElementById('attenteList');
-  if (!membresAttente.length) {
-    list.innerHTML = '<div class="empty-msg">Aucun membre en attente ✓</div>';
-    return;
-  }
-  const sorted = [...membresAttente].sort((a,b) => {
-    if (triCourant === 'nom-asc')  return (a.nom+a.prenom).localeCompare(b.nom+b.prenom);
-    if (triCourant === 'nom-desc') return (b.nom+b.prenom).localeCompare(a.nom+a.prenom);
-    if (triCourant === 'date-desc') return new Date(b.date_inscription) - new Date(a.date_inscription);
-    return new Date(a.date_inscription) - new Date(b.date_inscription); // date-asc
-  });
-  list.innerHTML = sorted.map(m => `
+  list.innerHTML = membresAttente.map(m => `
     <div class="membre-row" id="row-${m.id}">
       <div class="membre-info">
         <div class="membre-nom">${m.prenom} ${m.nom}</div>
@@ -440,6 +408,17 @@ function afficherAttente() {
       </div>
     </div>
   `).join('');
+  checkVide();
+}
+
+function checkVide() {
+  const f = document.getElementById('facturesAttenteList');
+  const m = document.getElementById('attenteList');
+  const aucune = !f.querySelector('.membre-row') && !m.querySelector('.membre-row');
+  if (aucune) {
+    f.innerHTML = '<div class="empty-msg">Aucune action en attente ✓</div>';
+    m.innerHTML = '';
+  }
 }
 
 async function validerMembre(id) {
