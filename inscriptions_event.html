@@ -319,60 +319,12 @@
     }
     btn.disabled = true; btn.textContent = 'Envoi…';
     const entry = { nom, presence: choice, commentaire: commentaire || null, created_at: new Date().toISOString() };
-    const emailInscrit = document.getElementById('emailInput').value.trim();
     const { error } = await sb.from('inscriptions').insert([entry]);
     if (error) { alert('Erreur : ' + error.message); btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; return; }
 
-    // Facture + mails uniquement si présent et email renseigné
-    if (choice === true && emailInscrit && emailInscrit.includes('@')) {
-      try {
-        const numeroFacture = await genererNumeroFacture();
-        const prixEvent = ev.prix ? ev.prix.replace(/[^0-9]/g, '') || '30' : '30';
-        const dateJour = new Date().toLocaleDateString('fr-FR');
 
-        // INSERT facture en_attente
-        await fetch(SUPABASE_URL + "/rest/v1/factures", {
-          method: "POST",
-          headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
-          body: JSON.stringify({
-            numero:      numeroFacture,
-            type:        "evenement",
-            membre_nom:  nom,
-            montant:     parseFloat(prixEvent) || 30,
-            statut:      "en_attente",
-            description: "Inscription evenement : " + ev.titre + " — " + ev.date
-          })
-        });
-
-        // Mail membre — inscription en attente de paiement
-        await envoyerMail(TMPL_MEMBRE, {
-          to_email:       emailInscrit,
-          prenom:         nom.split(' ')[0] || nom,
-          nom:            nom.split(' ').slice(1).join(' ') || '',
-          adresse:        '',
-          titre:          "Inscription " + ev.titre,
-          contenu:        "Votre inscription a bien ete enregistree. Merci de regler par virement en indiquant la reference ci-dessous. Votre facture vous sera envoyee apres confirmation du paiement.",
-          numero_facture: numeroFacture,
-          date_facture:   dateJour,
-          description:    ev.titre + " — " + ev.date + " — " + ev.lieu,
-          montant:        parseFloat(prixEvent) || 30,
-          mode_paiement:  "Virement bancaire — IBAN FR76 1020 6000 0198 7559 9124 403"
-        });
-
-        // Mail asso — nouvelle inscription a valider
-        await envoyerMail(TMPL_ASSO, {
-          titre:     "Nouvelle inscription evenement",
-          prenom:    nom.split(' ')[0] || nom,
-          nom:       nom.split(' ').slice(1).join(' ') || '',
-          email:     emailInscrit,
-          telephone: '',
-          detail:    ev.titre + " — " + ev.date + "\nMontant : " + (parseFloat(prixEvent)||30) + " EUR\nRef : " + numeroFacture + "\n→ A valider dans admin apres reception du paiement"
-        });
-      } catch(e) { console.warn('Erreur mail/facture event:', e); }
-    }
 
     await loadParticipants();
-    document.getElementById('emailInput').value = '';
     document.getElementById('nomInput').value = '';
     document.getElementById('commentInput').value = '';
     choice = null;
