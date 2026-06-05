@@ -382,10 +382,11 @@ async function supprimerFacture(id) {
 async function loadStats() {
   const { count: total } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre').eq('statut','actif');
   const { count: actifs } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre').eq('statut','actif');
-  const { count: att } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre').eq('statut','en_attente');
+  const { count: membresAtt } = await sb.from('membres').select('*', {count:'exact',head:true}).eq('role','membre').eq('statut','en_attente');
+  const { count: facturesAtt } = await sb.from('factures').select('*', {count:'exact',head:true}).eq('statut','en_attente');
   document.getElementById('statMembres').textContent = total ?? 0;
   document.getElementById('statActifs').textContent = actifs ?? 0;
-  document.getElementById('statAttente').textContent = att ?? 0;
+  document.getElementById('statAttente').textContent = (membresAtt ?? 0) + (facturesAtt ?? 0);
 }
 
 async function loadAttente() {
