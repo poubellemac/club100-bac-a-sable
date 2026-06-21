@@ -127,6 +127,10 @@
       <input type="text" id="nomInput" placeholder="Ex: Jean Dupont" />
       <label for="commentInput">Commentaire (optionnel)</label>
       <textarea id="commentInput" placeholder="Ex: Je viens avec un invité, allergie, message..."></textarea>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:1.25rem; padding:10px 14px; background:var(--noir); border:1px solid var(--border); border-radius:8px;">
+        <input type="checkbox" id="factureInput" style="width:18px; height:18px; accent-color:var(--or); cursor:pointer; margin:0;" />
+        <label for="factureInput" style="margin:0; text-transform:none; letter-spacing:0; font-weight:400; cursor:pointer; font-size:13px;">📄 Je souhaite recevoir une facture (réservé aux membres)</label>
+      </div>
       <label>Votre réponse</label>
       <div class="choice-row">
         <button class="choice-btn yes" id="btnOui" onclick="selectChoice(true)">
@@ -210,6 +214,7 @@
     </div>
 
     <button class="admin-back-btn" onclick="showPublic()">← Retour au site</button>
+    <button class="admin-back-btn" onclick="window.location.href='admin.html'" style="margin-top:0.5rem;">← Retour à l'administration</button>
   </div>
 </div>
 
@@ -323,20 +328,85 @@
       info.style.display = 'block'; return;
     }
     btn.disabled = true; btn.textContent = 'Envoi…';
+    const veutFacture = document.getElementById('factureInput').checked;
     const entry = { nom, presence: choice, commentaire: commentaire || null, created_at: new Date().toISOString() };
     const { error } = await sb.from('inscriptions').insert([entry]);
     if (error) { alert('Erreur : ' + error.message); btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; return; }
 
-
+    // ─── Facture à la demande (uniquement si membre et présent) ───
+    let factureMsg = '';
+    if (veutFacture && choice === true) {
+      factureMsg = await genererFactureEvent(nom);
+    } else if (veutFacture && choice === false) {
+      factureMsg = ' (facture non générée : réponse négative)';
+    }
 
     await loadParticipants();
     document.getElementById('nomInput').value = '';
     document.getElementById('commentInput').value = '';
+    document.getElementById('factureInput').checked = false;
     choice = null;
     document.getElementById('btnOui').classList.remove('selected');
     document.getElementById('btnNon').classList.remove('selected');
     btn.disabled = false; btn.textContent = 'Envoyer ma réponse';
-    showToast(entry.presence ? '🎉 Inscription reçue ! Votre facture arrivera après confirmation du paiement.' : '😢 Dommage, à une prochaine fois !');
+    showToast(entry.presence ? ('🎉 Inscription reçue !' + factureMsg) : '😢 Dommage, à une prochaine fois !');
+  }
+
+  // Cherche le membre par nom complet, envoie la facture event si trouvé
+  async function genererFactureEvent(nomComplet) {
+    // Découper "Prénom Nom" — on teste les deux sens
+    const parts = nomComplet.trim().split(/\s+/);
+    let membre = null;
+    // Recherche : un membre dont prenom+nom (dans un sens ou l'autre) matche
+    const { data: membres } = await sb.from('membres').select('*').neq('role', 'admin');
+    if (membres && membres.length) {
+      const cible = nomComplet.toLowerCase().replace(/\s+/g, ' ').trim();
+      membre = membres.find(m => {
+        const pn = ((m.prenom || '') + ' ' + (m.nom || '')).toLowerCase().trim();
+        const np = ((m.nom || '') + ' ' + (m.prenom || '')).toLowerCase().trim();
+        return pn === cible || np === cible;
+      });
+    }
+    if (!membre || !membre.email) {
+      return ' ⚠️ Facture non générée : nom non reconnu comme membre.';
+    }
+
+    // Générer numéro + enregistrer facture + envoyer mail
+    try {
+      const numero = await genererNumeroFacture();
+      const dateFr = new Date().toLocaleDateString('fr-FR');
+      const titreEvent = ev.titre || 'Événement';
+      const description = 'Inscription événement : ' + titreEvent;
+
+      // Enregistrer dans Supabase (statut en_attente, validation manuelle ensuite)
+      await sb.from('factures').insert([{
+        numero: numero,
+        type: 'event',
+        membre_nom: (membre.prenom || '') + ' ' + (membre.nom || ''),
+        montant: 0,
+        statut: 'en_attente',
+        description: description
+      }]);
+
+      // Mail au membre
+      await envoyerMail(TMPL_MEMBRE, {
+        to_email:       membre.email,
+        prenom:         membre.prenom || '',
+        nom:            membre.nom || '',
+        adresse:        membre.adresse || '',
+        titre:          'Facture — ' + titreEvent,
+        contenu:        'Votre demande de facture pour l\'événement a bien été enregistrée par le Club 100 Reims.',
+        description:    description,
+        numero_facture: numero,
+        date_facture:   dateFr,
+        montant:        '0,00',
+        mode_paiement:  '—'
+      });
+      return ' 📄 Votre facture a été envoyée par mail.';
+    } catch (e) {
+      console.warn('Facture event:', e);
+      return ' ⚠️ Erreur lors de l\'envoi de la facture.';
+    }
   }
 
   function render() {
