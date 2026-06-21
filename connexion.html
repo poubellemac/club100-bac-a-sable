@@ -219,8 +219,8 @@ async function doLogin() {
     return;
   }
 
-  // Stocker session en sessionStorage
-  sessionStorage.setItem('club100_user', JSON.stringify({
+  // Stocker session en localStorage
+  localStorage.setItem('club100_user', JSON.stringify({
     id: data.id,
     prenom: data.prenom,
     nom: data.nom,

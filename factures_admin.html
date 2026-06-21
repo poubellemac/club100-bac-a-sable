@@ -225,7 +225,7 @@ let sb;
 window.addEventListener("DOMContentLoaded", async () => {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   // Vérif session admin
-  const stored = sessionStorage.getItem("club100_user");
+  const stored = localStorage.getItem("club100_user");
   if (!stored) { window.location.href = "connexion.html"; return; }
   const user = JSON.parse(stored);
   if (user.role !== "admin") { window.location.href = "accueil_membre.html"; return; }
