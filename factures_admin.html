@@ -351,6 +351,15 @@ function afficherListe(liste) {
     const desc     = f.description || "";
     const num      = f.numero || "—";
     const nom      = f.membre_nom || "—";
+    const enAttente = (f.statut === "en_attente");
+
+    const statutBadge = enAttente
+      ? `<span class="badge-type" style="background:#5a3a00;color:#ffcf6b;">⏳ En attente</span>`
+      : `<span class="badge-type" style="background:#1f4022;color:#8fe39a;">✓ Payée</span>`;
+
+    const boutonValider = enAttente
+      ? `<button onclick="validerFacture(${f.id})" style="font-size:11px;padding:4px 12px;background:#2e7d32;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:Lato,sans-serif;margin-right:6px;">✓ Valider &amp; envoyer</button>`
+      : ``;
 
     html += `
       <div class="facture-row">
@@ -365,14 +374,72 @@ function afficherListe(liste) {
         <div style="text-align:right;flex-shrink:0;">
           <div class="facture-montant">${montant} €</div>
           <span class="badge-type ${badgeCls}">${label}</span>
+          ${statutBadge}
           <div style="margin-top:8px;">
-            <button onclick="ouvrirFacture(${f.id})" style="font-size:11px;padding:4px 12px;background:#C9A84C;color:#0F0F0F;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:Lato,sans-serif;">Éditer</button>
+            ${boutonValider}<button onclick="ouvrirFacture(${f.id})" style="font-size:11px;padding:4px 12px;background:#C9A84C;color:#0F0F0F;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:Lato,sans-serif;">Éditer</button>
           </div>
         </div>
       </div>`;
   });
 
   container.innerHTML = html;
+}
+
+async function validerFacture(id) {
+  const f = toutesFactures.find(x => x.id === id);
+  if (!f) { alert("Facture introuvable."); return; }
+  if (!confirm("Confirmer la réception du paiement et envoyer la facture au membre ?\n\n" + (f.membre_nom || "") + " — n° " + f.numero)) return;
+
+  // Retrouver le membre (email + adresse) à partir du nom enregistré
+  const { data: membres } = await sb.from("membres").select("*").neq("role", "admin");
+  let membre = null;
+  if (membres && membres.length) {
+    const cible = (f.membre_nom || "").toLowerCase().replace(/\s+/g, " ").trim();
+    membre = membres.find(m => {
+      const pn = ((m.prenom || "") + " " + (m.nom || "")).toLowerCase().trim();
+      const np = ((m.nom || "") + " " + (m.prenom || "")).toLowerCase().trim();
+      return pn === cible || np === cible;
+    });
+  }
+  if (!membre || !membre.email) {
+    alert("⚠️ Membre ou email introuvable pour cette facture. Validation annulée.");
+    return;
+  }
+
+  // 1. Passer le statut à payé
+  const { error } = await sb.from("factures").update({ statut: "paye" }).eq("id", id);
+  if (error) { alert("Erreur Supabase : " + error.message); return; }
+
+  // 2. Envoyer la facture au membre (template_ic5fplw)
+  try {
+    await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service_id:  "service_eh2k91k",
+        template_id: "template_ic5fplw",
+        user_id:     "x9cMeFn-4R6EbOHdS",
+        template_params: {
+          to_email:       membre.email,
+          prenom:         membre.prenom || "",
+          nom:            membre.nom || "",
+          adresse:        membre.adresse || "",
+          titre:          "Facture — " + (TYPE_LABELS[f.type] || "Club 100 Reims"),
+          contenu:        "Votre paiement a bien été reçu. Veuillez trouver votre facture ci-dessous.",
+          description:    f.description || "",
+          numero_facture: f.numero || "",
+          date_facture:   new Date().toLocaleDateString("fr-FR"),
+          montant:        parseFloat(f.montant || 0).toLocaleString("fr-FR", {minimumFractionDigits:2}),
+          mode_paiement:  "—"
+        }
+      })
+    });
+    alert("✓ Facture validée et envoyée à " + membre.email);
+  } catch (e) {
+    alert("Statut mis à jour, mais l'envoi du mail a échoué : " + e.message);
+  }
+
+  await charger();
 }
 
 function ouvrirFacture(id) {

@@ -352,12 +352,9 @@
     showToast(entry.presence ? ('🎉 Inscription reçue !' + factureMsg) : '😢 Dommage, à une prochaine fois !');
   }
 
-  // Cherche le membre par nom complet, envoie la facture event si trouvé
+  // Cherche le membre par nom complet. Si trouvé : facture en_attente + notif ASSO
   async function genererFactureEvent(nomComplet) {
-    // Découper "Prénom Nom" — on teste les deux sens
-    const parts = nomComplet.trim().split(/\s+/);
     let membre = null;
-    // Recherche : un membre dont prenom+nom (dans un sens ou l'autre) matche
     const { data: membres } = await sb.from('membres').select('*').neq('role', 'admin');
     if (membres && membres.length) {
       const cible = nomComplet.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -371,41 +368,45 @@
       return ' ⚠️ Facture non générée : nom non reconnu comme membre.';
     }
 
-    // Générer numéro + enregistrer facture + envoyer mail
     try {
       const numero = await genererNumeroFacture();
-      const dateFr = new Date().toLocaleDateString('fr-FR');
       const titreEvent = ev.titre || 'Événement';
       const description = 'Inscription événement : ' + titreEvent;
 
-      // Enregistrer dans Supabase (statut en_attente, validation manuelle ensuite)
+      // ÉTAPE 1 : enregistrer la facture en attente de validation (pas de mail membre)
       await sb.from('factures').insert([{
         numero: numero,
-        type: 'event',
+        type: 'evenement',
         membre_nom: (membre.prenom || '') + ' ' + (membre.nom || ''),
         montant: 0,
         statut: 'en_attente',
         description: description
       }]);
 
-      // Mail au membre
-      await envoyerMail(TMPL_MEMBRE, {
-        to_email:       membre.email,
-        prenom:         membre.prenom || '',
-        nom:            membre.nom || '',
-        adresse:        membre.adresse || '',
-        titre:          'Facture — ' + titreEvent,
-        contenu:        'Votre demande de facture pour l\'événement a bien été enregistrée par le Club 100 Reims.',
-        description:    description,
-        numero_facture: numero,
-        date_facture:   dateFr,
-        montant:        '0,00',
-        mode_paiement:  '—'
+      // ÉTAPE 1 : notifier l'ASSO (admin) qu'une facture est à valider
+      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id:  'service_eh2k91k',
+          template_id: 'template_qn9er0w',
+          user_id:     'x9cMeFn-4R6EbOHdS',
+          template_params: {
+            titre:     'Nouvelle facture événement à valider',
+            prenom:    membre.prenom || '',
+            nom:       membre.nom || '',
+            email:     membre.email || '',
+            telephone: membre.telephone || '',
+            detail:    'Inscription événement : ' + titreEvent + '\nFacture n° ' + numero +
+                       '\n→ À valider dans factures_admin.html après réception du paiement.'
+          }
+        })
       });
-      return ' 📄 Votre facture a été envoyée par mail.';
+
+      return ' 📄 Votre demande de facture a été transmise. Elle vous sera envoyée après validation.';
     } catch (e) {
       console.warn('Facture event:', e);
-      return ' ⚠️ Erreur lors de l\'envoi de la facture.';
+      return ' ⚠️ Erreur lors de la demande de facture.';
     }
   }
 
