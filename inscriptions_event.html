@@ -156,6 +156,23 @@
     <div id="listContainer"><p class="empty-msg">Aucune réponse pour l'instant.</p></div>
   </div>
 
+  <a class="admin-link" id="adminLink" onclick="showLogin()" style="cursor:pointer;">⚙ admin</a>
+
+</div>
+
+
+<!-- ===== LOGIN ADMIN ===== -->
+<div id="loginPanel" style="display:none; max-width:540px; width:100%; margin-top:2rem;">
+  <div class="login-box">
+    <div class="login-title">🔐 Accès admin</div>
+    <div class="login-error" id="loginError">Identifiants incorrects.</div>
+    <label for="loginUser" style="text-align:left;">Identifiant</label>
+    <input type="text" id="loginUser" placeholder="adminpierre" autocomplete="username" />
+    <label for="loginPwd" style="text-align:left;">Mot de passe</label>
+    <input type="password" id="loginPwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAdminLogin()" />
+    <button class="admin-save-btn" onclick="doAdminLogin()">Entrer</button>
+    <button class="admin-back-btn" onclick="showPublic()">← Retour</button>
+  </div>
 </div>
 
 
@@ -227,8 +244,6 @@
     await loadParticipants();
     document.getElementById('statusMsg').textContent = '✅ Données synchronisées en temps réel.';
     setInterval(loadParticipants, 30000);
-    // Ouvrir directement le panneau admin si paramètre ?admin=1
-    if (new URLSearchParams(window.location.search).get('admin') === '1') showAdmin();
   });
 
   async function loadParametres() {
@@ -343,13 +358,48 @@
   }
 
   // ─── ADMIN ────────────────────────────────────────────────
+  function showLogin() {
+    document.getElementById('publicPanel').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'none';
+    document.getElementById('loginPanel').style.display = 'block';
+    document.getElementById('loginError').style.display = 'none';
+    document.getElementById('loginUser').value = '';
+    document.getElementById('loginPwd').value = '';
+  }
+
+  async function doAdminLogin() {
+    const user = document.getElementById('loginUser').value.trim();
+    const pwd  = document.getElementById('loginPwd').value.trim();
+    const err  = document.getElementById('loginError');
+    err.style.display = 'none';
+    if (!user || !pwd) { err.textContent = 'Remplissez les deux champs.'; err.style.display = 'block'; return; }
+
+    // Vérif contre la table membres (mêmes comptes admin que le reste du site)
+    const { data, error } = await sb
+      .from('membres')
+      .select('*')
+      .ilike('prenom', user)
+      .ilike('nom', user)
+      .eq('role', 'admin')
+      .single();
+
+    if (error || !data || data.mdp.toLowerCase() !== pwd.toLowerCase()) {
+      err.textContent = 'Identifiants incorrects.';
+      err.style.display = 'block';
+      return;
+    }
+    showAdmin();
+  }
+
   function showAdmin() {
     document.getElementById('publicPanel').style.display = 'none';
+    document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'flex';
     populateAdminForm(); renderAdminList();
   }
   function showPublic() {
     document.getElementById('publicPanel').style.display = 'block';
+    document.getElementById('loginPanel').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'none';
   }
   function populateAdminForm() {
