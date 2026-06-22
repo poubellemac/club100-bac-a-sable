@@ -38,6 +38,8 @@
   .membre-row:last-child { border-bottom: none; }
   .membre-nom { font-weight: 700; }
   .membre-detail { font-size: 11px; color: var(--or-light); opacity: 0.5; margin-top: 2px; }
+  .contact-link { color: var(--or-light); text-decoration: none; border-bottom: 1px dotted var(--border); }
+  .contact-link:hover { color: var(--or); border-bottom-color: var(--or); }
   .empty-msg { font-size: 13px; color: var(--or-light); opacity: 0.3; text-align: center; padding: 1.5rem 0; font-style: italic; }
 </style>
 </head>
@@ -45,7 +47,7 @@
 
 <div class="header">
   <div>
-    <div class="header-title">Adhérents</div>
+    <div class="header-title">Adhérents <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.1</span></div>
     <div class="header-sub">Club 100 Reims</div>
   </div>
   <button class="btn-retour" onclick="window.location.href='admin.html'">← Retour</button>
@@ -57,7 +59,7 @@
     <button class="btn-tri" id="tri-nom" onclick="setTri('nom')">A→Z Nom</button>
     <button class="btn-tri" id="tri-date" onclick="setTri('date')">↑ Date</button>
   </div>
-  <input class="search-input" type="text" id="search" placeholder="Rechercher par nom, prénom, téléphone…" oninput="afficher()" />
+  <input class="search-input" type="text" id="search" placeholder="Rechercher par nom, prénom, téléphone, email…" oninput="afficher()" />
   <div class="stat-label" id="compteur">Chargement…</div>
 </div>
 
@@ -72,7 +74,7 @@ let sb, tousAdherents = [], triCourant = 'prenom';
 
 window.addEventListener('DOMContentLoaded', async () => {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  const { data } = await sb.from('membres').select('prenom,nom,telephone,statut,date_inscription').eq('role','membre').order('prenom');
+  const { data } = await sb.from('membres').select('prenom,nom,telephone,email,statut,date_inscription').eq('role','membre').order('prenom');
   tousAdherents = data || [];
   afficher();
 });
@@ -87,7 +89,8 @@ function afficher() {
   const search = document.getElementById('search').value.toLowerCase();
   let liste = tousAdherents.filter(m =>
     (m.prenom+' '+m.nom).toLowerCase().includes(search) ||
-    (m.telephone||'').includes(search)
+    (m.telephone||'').includes(search) ||
+    (m.email||'').toLowerCase().includes(search)
   );
   liste = [...liste].sort((a,b) => {
     if (triCourant === 'nom') return a.nom.localeCompare(b.nom);
@@ -97,14 +100,23 @@ function afficher() {
   document.getElementById('compteur').textContent = liste.length + " adhérent" + (liste.length > 1 ? "s" : "");
   const el = document.getElementById('liste');
   if (!liste.length) { el.innerHTML = '<div class="empty-msg">Aucun adhérent trouvé</div>'; return; }
-  el.innerHTML = liste.map(m => `
+  el.innerHTML = liste.map(m => {
+    const tel = m.telephone
+      ? `<a href="tel:${(m.telephone||'').replace(/\s/g,'')}" class="contact-link">${m.telephone}</a>`
+      : "Pas de téléphone";
+    const mail = m.email
+      ? `<a href="mailto:${m.email}" class="contact-link">${m.email}</a>`
+      : "Pas d'email";
+    const statut = m.statut === "actif" ? "Actif" : "En attente";
+    return `
     <div class="membre-row">
       <div>
         <div class="membre-nom">${m.prenom} ${m.nom}</div>
-        <div class="membre-detail">${m.telephone || "Pas de téléphone"} · ${m.statut === "actif" ? "Actif" : "En attente"}</div>
+        <div class="membre-detail">${tel} · ${mail} · ${statut}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 </script>
 </body>
