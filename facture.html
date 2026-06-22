@@ -902,7 +902,7 @@ async function validerEtGenerer() {
 
   // 2. Mail membre avec la facture
   try {
-    await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -924,8 +924,17 @@ async function validerEtGenerer() {
         }
       })
     });
-    toast('✓ Mail envoye au membre', 'success');
-  } catch(e) { console.warn('Mail membre:', e); }
+    const corps = await resp.text();
+    console.log('EmailJS status:', resp.status, '| reponse:', corps, '| to_email:', d.mail);
+    if (resp.ok) {
+      toast('✓ Mail envoye au membre', 'success');
+    } else {
+      toast('⚠ EmailJS a refuse : ' + resp.status + ' ' + corps, 'error');
+    }
+  } catch(e) {
+    console.error('Mail membre (erreur reseau):', e);
+    toast('⚠ Erreur reseau envoi mail', 'error');
+  }
 
   // 3. Reset formulaire + nouveau numero
   resetForm();
