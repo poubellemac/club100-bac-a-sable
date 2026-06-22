@@ -183,7 +183,7 @@
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
   <div class="admin-section">
-    <div class="admin-header">⚙ Administration</div>
+    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.1</span></div>
 
     <div class="card">
       <div class="card-title">Événement en cours</div>
@@ -197,7 +197,8 @@
       <div class="admin-field"><label>Lieu (nom affiché)</label><input type="text" id="adminLieu" /></div>
       <div class="admin-field"><label>Adresse (pour Google Maps)</label><input type="text" id="adminAdresse" /></div>
       <div class="admin-field"><label>Description courte</label><textarea id="adminDescription"></textarea></div>
-      <div class="admin-field"><label>Prix / conditions</label><input type="text" id="adminPrix" /></div>
+      <div class="admin-field"><label>Prix / conditions (texte affiché)</label><input type="text" id="adminPrix" /></div>
+      <div class="admin-field"><label>Prix entrée (€) — montant facturé</label><input type="number" id="adminPrixNum" min="0" step="0.01" value="30" /></div>
       <button class="admin-save-btn" onclick="saveEvent()">💾 Enregistrer</button>
     </div>
 
@@ -239,6 +240,7 @@
     adresse: "Hameau de Vertuelle, 51150 Louvois",
     description: "",
     prix: "⚠️ 30 € PAR PERSONNE + UNE BOUTEILLE",
+    prixNum: 30,
     actif: true
   };
 
@@ -263,6 +265,7 @@
       adresse: data.lieu_adresse || ev.adresse,
       description: data.description || ev.description,
       prix: data.prix_conditions || ev.prix,
+      prixNum: (data.prix_num !== null && data.prix_num !== undefined) ? Number(data.prix_num) : ev.prixNum,
       actif: data.inscriptions_ouvertes !== null ? data.inscriptions_ouvertes : ev.actif
     };
   }
@@ -378,7 +381,7 @@
         numero: numero,
         type: 'evenement',
         membre_nom: (membre.prenom || '') + ' ' + (membre.nom || ''),
-        montant: 0,
+        montant: ev.prixNum || 0,
         statut: 'en_attente',
         description: description
       }]);
@@ -481,6 +484,7 @@
     document.getElementById('adminAdresse').value = ev.adresse;
     document.getElementById('adminDescription').value = ev.description;
     document.getElementById('adminPrix').value = ev.prix;
+    document.getElementById('adminPrixNum').value = ev.prixNum;
     document.getElementById('evActif').checked = ev.actif;
   }
   async function saveEvent() {
@@ -492,6 +496,7 @@
       adresse: document.getElementById('adminAdresse').value.trim(),
       description: document.getElementById('adminDescription').value.trim(),
       prix: document.getElementById('adminPrix').value.trim(),
+      prixNum: parseFloat(document.getElementById('adminPrixNum').value) || 0,
       actif: document.getElementById('evActif').checked
     };
     const { error } = await sb.from('parametres').upsert({
@@ -503,6 +508,7 @@
       lieu_adresse: ev.adresse,
       description: ev.description,
       prix_conditions: ev.prix,
+      prix_num: ev.prixNum,
       inscriptions_ouvertes: ev.actif
     });
     if (error) { alert('Erreur sauvegarde : ' + error.message); return; }
