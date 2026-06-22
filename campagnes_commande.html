@@ -59,7 +59,7 @@ tr:last-child td { border-bottom: none; }
 <body>
 
 <div class="header">
-  <h1>📦 Campagnes Commande <span style="background:var(--or);color:#1a1a1a;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;vertical-align:middle;">v1.0</span></h1>
+  <h1>📦 Campagnes Commande <span style="background:var(--or);color:#1a1a1a;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;vertical-align:middle;">v1.1</span></h1>
   <p class="tagline">Club 100 Reims — Regroupement des commandes vêtements</p>
   <a href="admin.html" class="back-link">← Retour admin</a>
   <div class="divider"></div>
@@ -116,7 +116,7 @@ async function chargerPretes() {
     .from("factures")
     .select("id, numero, membre_nom, montant, created_at, details_json, campagne")
     .eq("type", "commande_vetements")
-    .eq("statut", "payé")
+    .in("statut", ["paye", "payé"])
     .is("campagne", null)
     .order("created_at", { ascending: true });
 
