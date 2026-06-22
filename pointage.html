@@ -104,7 +104,7 @@
 <div id="appScreen">
   <div class="top-bar">
     <div>
-      <div class="top-bar-title">📋 Pointage <span style="background:var(--or);color:var(--noir);padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700;">v1.1</span> <span class="sync-dot" id="syncDot"></span></div>
+      <div class="top-bar-title">📋 Pointage <span style="background:var(--or);color:var(--noir);padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700;">v1.2</span> <span class="sync-dot" id="syncDot"></span></div>
     </div>
     <div class="top-bar-stats">
       <div class="stat-pill present" id="statPresent">0 présents</div>
@@ -146,7 +146,7 @@
 </div>
 
 <!-- Menu choix mode de paiement -->
-<div class="pay-overlay" id="payMenuOverlay" onclick="if(event.target===this)fermerMenuPaiement()">
+<div class="pay-overlay" id="payMenuOverlay" style="display:none;" onclick="if(event.target===this)fermerMenuPaiement()">
   <div class="pay-box" id="payMenuBox"></div>
 </div>
 
