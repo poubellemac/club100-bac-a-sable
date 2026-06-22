@@ -74,8 +74,21 @@
 
   .empty-state { text-align: center; padding: 3rem 1rem; color: var(--or-light); opacity: 0.4; font-style: italic; }
 
-  .refresh-btn { position: fixed; bottom: 1.5rem; right: 1rem; width: 52px; height: 52px; border-radius: 50%; background: var(--or); color: var(--noir); border: none; font-size: 22px; cursor: pointer; box-shadow: 0 4px 16px rgba(201,168,76,0.4); display: flex; align-items: center; justify-content: center; z-index: 40; transition: transform 0.2s; }
-  .refresh-btn:active { transform: rotate(180deg) scale(0.9); }
+  /* Barre d'action fixe en bas, bien visible */
+  .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 10px; justify-content: center; padding: 12px 1rem calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--noir) 70%, transparent); z-index: 50; }
+  .bottom-bar button { flex: 1; max-width: 220px; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .bottom-bar .bb-refresh { background: transparent; color: var(--or); border: 1px solid var(--or); }
+  .bottom-bar .bb-export  { background: var(--or); color: var(--noir); }
+  .bottom-bar button:active { transform: scale(0.96); }
+  /* on laisse de la place en bas pour ne pas masquer le dernier item */
+  .list-container { padding-bottom: 90px; }
+
+  /* Menu de choix du mode de paiement */
+  .pay-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+  .pay-box { background: var(--noir); border: 1px solid var(--or); border-radius: 16px; padding: 20px; width: 100%; max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+  .pay-choice { display: block; width: 100%; padding: 14px; margin-bottom: 8px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--or-light); font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; text-align: center; }
+  .pay-choice:active { background: rgba(201,168,76,0.15); }
+  .pay-choice-sel { background: var(--or); color: var(--noir); border-color: var(--or); }
 
   .toast { position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--or); color: var(--noir); padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 700; transition: transform 0.3s ease; z-index: 100; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
@@ -91,7 +104,7 @@
 <div id="appScreen">
   <div class="top-bar">
     <div>
-      <div class="top-bar-title">📋 Pointage <span class="sync-dot" id="syncDot"></span></div>
+      <div class="top-bar-title">📋 Pointage <span style="background:var(--or);color:var(--noir);padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700;">v1.1</span> <span class="sync-dot" id="syncDot"></span></div>
     </div>
     <div class="top-bar-stats">
       <div class="stat-pill present" id="statPresent">0 présents</div>
@@ -124,8 +137,17 @@
   </div>
 
   <div class="list-container" id="listContainer"></div>
+</div>
 
-  <button class="refresh-btn" onclick="loadData()" title="Actualiser">↻</button>
+<!-- Barre d'action fixe en bas -->
+<div class="bottom-bar">
+  <button class="bb-refresh" onclick="loadData()" title="Actualiser">↻ Actualiser</button>
+  <button class="bb-export" onclick="exportCSV()" title="Exporter en CSV">📊 Export Excel</button>
+</div>
+
+<!-- Menu choix mode de paiement -->
+<div class="pay-overlay" id="payMenuOverlay" onclick="if(event.target===this)fermerMenuPaiement()">
+  <div class="pay-box" id="payMenuBox"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -160,7 +182,7 @@
 
     const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     const nbPresent = participants.filter(p => pointage[p.id]?.present === true).length;
-    const nbPaye    = participants.filter(p => pointage[p.id]?.paye === true).length;
+    const nbPaye    = participants.filter(p => { const v = pointage[p.id]?.paye; return v && v !== 'Pas payé'; }).length;
 
     let texte = `POINTAGE CLUB 100 — ${date}\n`;
     texte += `${'='.repeat(40)}\n`;
@@ -172,8 +194,8 @@
     tries.forEach(p => {
       const pt = pointage[p.id] || {};
       const present = pt.present === true ? '✅' : pt.present === false ? '❌' : '⏳';
-      const paye = pt.paye ? '💰' : '  ';
-      texte += `${present} ${paye}  ${p.nom}\n`;
+      const mode = (pt.paye && pt.paye !== 'Pas payé') ? pt.paye : '';
+      texte += `${present}  ${p.nom}${mode ? ' — ' + mode : ''}\n`;
     });
 
     try {
@@ -183,6 +205,32 @@
       showToast('❌ Erreur envoi mail');
       console.error(e);
     }
+  }
+
+  // Export CSV (Nom, Présence, Mode de paiement) — s'ouvre dans Excel
+  function exportCSV() {
+    if (!participants.length) { showToast('Aucune donnée à exporter'); return; }
+    const tries = participants.slice().sort((a,b) => a.nom.localeCompare(b.nom));
+    const lignes = ['Nom,Présence,Mode de paiement'];
+    tries.forEach(p => {
+      const pt = pointage[p.id] || {};
+      const presence = pt.present === true ? 'Présent' : pt.present === false ? 'Absent' : 'Non pointé';
+      const mode = (pt.paye && pt.paye !== 'Pas payé') ? pt.paye : 'Pas payé';
+      // Échapper les guillemets et entourer chaque champ
+      const esc = s => '"' + String(s).replace(/"/g, '""') + '"';
+      lignes.push([esc(p.nom), esc(presence), esc(mode)].join(','));
+    });
+    // BOM UTF-8 pour que Excel lise correctement les accents
+    const csv = '\uFEFF' + lignes.join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pointage_club100_${date}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('📊 Export CSV téléchargé');
   }
 
   function loadPointageLocal() {
@@ -221,11 +269,30 @@
     showToast(pointage[id].present === false ? '❌ Absent noté' : '↩ Annulé');
   }
 
-  function togglePaye(id) {
+  function ouvrirMenuPaiement(id) {
+    const modes = ['Pas payé', 'Espèces', 'Virement', 'Chèque', 'Nature'];
+    const actuel = (pointage[id] && pointage[id].paye) ? pointage[id].paye : 'Pas payé';
+    const overlay = document.getElementById('payMenuOverlay');
+    const box = document.getElementById('payMenuBox');
+    box.innerHTML = '<div style="font-weight:700;color:var(--or);margin-bottom:12px;text-align:center;">Mode de paiement</div>' +
+      modes.map(m => {
+        const sel = (m === actuel);
+        return `<button class="pay-choice ${sel ? 'pay-choice-sel' : ''}" onclick="choisirPaiement(${id}, '${m}')">${m === 'Pas payé' ? '💸' : '💰'} ${m}</button>`;
+      }).join('') +
+      '<button class="pay-choice" style="margin-top:8px;opacity:0.6;" onclick="fermerMenuPaiement()">Annuler</button>';
+    overlay.style.display = 'flex';
+  }
+
+  function choisirPaiement(id, mode) {
     if (!pointage[id]) pointage[id] = {};
-    pointage[id].paye = !pointage[id].paye;
+    pointage[id].paye = (mode === 'Pas payé') ? '' : mode;
     savePointageLocal(); renderList(); updateStats();
-    showToast(pointage[id].paye ? '💰 Payé !' : '↩ Paiement annulé');
+    fermerMenuPaiement();
+    showToast(pointage[id].paye ? ('💰 ' + mode) : '↩ Paiement annulé');
+  }
+
+  function fermerMenuPaiement() {
+    document.getElementById('payMenuOverlay').style.display = 'none';
   }
 
   // ─── FILTRE ──────────────────────────────────────────────
@@ -246,7 +313,7 @@
     if (currentFilter === 'presents')    list = list.filter(p => pointage[p.id]?.present === true);
     if (currentFilter === 'absents')     list = list.filter(p => pointage[p.id]?.present === false);
     if (currentFilter === 'non_pointes') list = list.filter(p => pointage[p.id]?.present == null);
-    if (currentFilter === 'non_payes')   list = list.filter(p => !pointage[p.id]?.paye);
+    if (currentFilter === 'non_payes')   list = list.filter(p => { const v = pointage[p.id]?.paye; return !v || v === 'Pas payé'; });
 
     const container = document.getElementById('listContainer');
     if (list.length === 0) {
@@ -266,6 +333,9 @@
       else if (isAbsent) statusBadge = '<span style="font-size:11px;color:var(--red);font-weight:700;">❌ Absent</span>';
       else statusBadge = '<span style="font-size:11px;color:var(--or-light);opacity:0.4;">⏳ Non pointé</span>';
 
+      const modePaye = pt.paye || '';            // '' = pas payé, sinon 'Espèces'/'Virement'/'Chèque'/'Nature'
+      const estPaye  = modePaye && modePaye !== 'Pas payé';
+      const labelPaye = estPaye ? ('💰 ' + modePaye) : '💸 Pas payé';
       const corbeille = p.manuel ? `<button onclick="deletePersonne(${p.id}, '${esc(p.nom)}')" style="background:transparent;border:none;cursor:pointer;font-size:16px;opacity:0.4;padding:2px 4px;" title="Supprimer">🗑️</button>` : '';
 
       return `<div class="person-card">
@@ -280,7 +350,7 @@
         <div class="person-actions">
           <button class="action-btn ${isPresent ? 'active-present' : ''}" onclick="togglePresent(${p.id})">✅ Présent</button>
           <button class="action-btn ${isAbsent  ? 'active-absent'  : ''}" onclick="toggleAbsent(${p.id})">❌ Absent</button>
-          <button class="action-btn ${isPaye    ? 'active-paye'    : 'active-impaye'}" onclick="togglePaye(${p.id})">${isPaye ? '💰 Payé' : '💸 Pas payé'}</button>
+          <button class="action-btn ${estPaye ? 'active-paye' : 'active-impaye'}" onclick="ouvrirMenuPaiement(${p.id})">${labelPaye}</button>
         </div>
       </div>`;
     }).join('');
@@ -289,7 +359,7 @@
   function updateStats() {
     const inscrits = participants;
     const nbPresent = inscrits.filter(p => pointage[p.id]?.present === true).length;
-    const nbPaye    = inscrits.filter(p => pointage[p.id]?.paye === true).length;
+    const nbPaye    = inscrits.filter(p => { const v = pointage[p.id]?.paye; return v && v !== 'Pas payé'; }).length;
     document.getElementById('statPresent').textContent = nbPresent + ' présent' + (nbPresent > 1 ? 's' : '');
     document.getElementById('statPaye').textContent    = nbPaye    + ' payé' + (nbPaye > 1 ? 's' : '');
   }
