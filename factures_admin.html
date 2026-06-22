@@ -149,7 +149,7 @@ body {
     <div>
       <div class="header-title">Gestion des Factures</div>
       <div class="header-sub">Club 100 Reims</div>
-      <div class="version-tag">v1</div>
+      <div class="version-tag">v1.1</div>
     </div>
   </div>
   <div class="btn-row">
@@ -412,7 +412,7 @@ async function validerFacture(id) {
 
   // 2. Envoyer la facture au membre (template_ic5fplw)
   try {
-    await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -434,9 +434,16 @@ async function validerFacture(id) {
         }
       })
     });
-    alert("✓ Facture validée et envoyée à " + membre.email);
+    const corps = await resp.text();
+    console.log("EmailJS status:", resp.status, "| reponse:", corps, "| to_email:", membre.email);
+    if (resp.ok) {
+      alert("✓ Facture validée et envoyée à " + membre.email);
+    } else {
+      alert("⚠️ Statut mis à jour (payé), mais EmailJS a REFUSÉ l'envoi.\n\nCode : " + resp.status + "\nRéponse : " + corps + "\n\n(Voir la console F12 pour le détail.)");
+    }
   } catch (e) {
-    alert("Statut mis à jour, mais l'envoi du mail a échoué : " + e.message);
+    console.error("Mail facture (erreur reseau):", e);
+    alert("Statut mis à jour, mais l'envoi du mail a échoué (erreur réseau) : " + e.message);
   }
 
   await charger();
