@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campagnes Commande — Club 100 Reims</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --noir: #0F0F0F; --noir-soft: #1A1A1A; --noir-card: #202020;
+  --or: #C9A84C; --or-light: #E8D5A0; --or-dark: #8A6820;
+  --blanc: #F5F0E8; --border: rgba(201,168,76,0.3); --border-strong: rgba(201,168,76,0.6);
+  --green: #2E6B3E; --red: #8B1A1A;
+}
+body { font-family: 'Lato', sans-serif; background: var(--noir); color: var(--blanc); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem 4rem; background-image: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.05) 0%, transparent 65%); }
+
+.header { text-align: center; max-width: 640px; width: 100%; margin-bottom: 1.5rem; }
+.header h1 { font-family: 'Playfair Display', serif; font-size: clamp(1.4rem, 5vw, 1.9rem); font-weight: 700; color: var(--or); margin-bottom: 0.3rem; }
+.tagline { font-size: 13px; color: var(--or-light); opacity: 0.6; font-style: italic; }
+.version { font-size: 10px; color: var(--or-light); opacity: 0.3; margin-top: 4px; }
+.back-link { display: inline-block; margin-top: 10px; font-size: 12px; color: var(--or-light); opacity: 0.7; text-decoration: none; }
+.back-link:hover { opacity: 1; }
+.divider { width: 50px; height: 1px; background: linear-gradient(to right, transparent, var(--or), transparent); margin: 1.2rem auto; }
+
+.card { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 12px; padding: 1.6rem; max-width: 640px; width: 100%; margin-bottom: 1.2rem; }
+.card-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.05rem; margin-bottom: 1.2rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+
+.empty { text-align: center; color: var(--or-light); opacity: 0.5; font-size: 14px; padding: 1.5rem 0; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--or); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+td { padding: 8px 6px; border-bottom: 1px solid rgba(201,168,76,0.12); color: var(--blanc); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.td-art { color: var(--or-light); font-size: 12px; line-height: 1.5; }
+
+.summary-box { background: rgba(201,168,76,0.06); border: 1px dashed var(--border-strong); border-radius: 10px; padding: 1rem 1.2rem; margin: 1rem 0; }
+.summary-title { font-size: 10px; color: var(--or); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+.summary-line { font-size: 13px; color: var(--or-light); line-height: 1.9; font-family: monospace; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 18px; background: linear-gradient(135deg, var(--or-dark), var(--or)); color: var(--noir); font-family: 'Lato', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.05em; border: none; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; width: 100%; }
+.btn:hover { opacity: 0.9; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.histo-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; background: var(--noir); }
+.histo-info { flex: 1; }
+.histo-libelle { font-weight: 700; font-size: 13px; color: var(--blanc); }
+.histo-meta { font-size: 11px; color: var(--or-light); opacity: 0.7; margin-top: 2px; }
+.histo-btn { padding: 8px 14px; background: transparent; border: 1px solid var(--border-strong); color: var(--or); font-size: 12px; font-weight: 700; border-radius: 8px; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+.histo-btn:hover { background: rgba(201,168,76,0.1); }
+
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--noir-soft); border: 1px solid var(--or); border-radius: 8px; padding: 12px 20px; font-size: 13px; z-index: 100; transition: transform 0.3s; min-width: 240px; text-align: center; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: #E57373; }
+
+.mention { font-size: 11px; color: var(--or-light); opacity: 0.35; text-align: center; max-width: 640px; width: 100%; margin-top: 1rem; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📦 Campagnes Commande <span style="background:var(--or);color:#1a1a1a;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;vertical-align:middle;">v1.0</span></h1>
+  <p class="tagline">Club 100 Reims — Regroupement des commandes vêtements</p>
+  <a href="admin.html" class="back-link">← Retour admin</a>
+  <div class="divider"></div>
+</div>
+
+<!-- COMMANDES PRÊTES -->
+<div class="card">
+  <div class="card-title">🟢 Commandes prêtes à transmettre</div>
+  <div id="pretesContent"><div class="empty">Chargement…</div></div>
+</div>
+
+<!-- HISTORIQUE -->
+<div class="card">
+  <div class="card-title">🗂️ Campagnes transmises</div>
+  <div id="histoContent"><div class="empty">Chargement…</div></div>
+</div>
+
+<p class="mention">Club 100 Reims en Champagne — C3 Allée Alberto Santos Dumont, 51100 Reims<br>club100reims@gmail.com — Président : Pierre Bernardin</p>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── CONFIG ───────────────────────────────────────────────
+const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
+// ─────────────────────────────────────────────────────────
+
+let sb;
+let commandesPretes = [];
+
+window.addEventListener("DOMContentLoaded", () => {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  chargerPretes();
+  chargerHistorique();
+});
+
+function showToast(msg, isError) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast" + (isError ? " error" : "") + " show";
+  setTimeout(() => t.className = "toast", 3500);
+}
+
+// Format date FR JJ/MM/AAAA
+function dateFR(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("fr-FR");
+}
+
+// ── Charger les commandes payées non encore transmises ──
+async function chargerPretes() {
+  const { data, error } = await sb
+    .from("factures")
+    .select("id, numero, membre_nom, montant, created_at, details_json, campagne")
+    .eq("type", "commande_vetements")
+    .eq("statut", "payé")
+    .is("campagne", null)
+    .order("created_at", { ascending: true });
+
+  const zone = document.getElementById("pretesContent");
+
+  if (error) {
+    zone.innerHTML = '<div class="empty">Erreur de chargement.</div>';
+    console.error(error);
+    return;
+  }
+
+  commandesPretes = data || [];
+
+  if (commandesPretes.length === 0) {
+    zone.innerHTML = '<div class="empty">Aucune commande payée en attente de transmission.</div>';
+    return;
+  }
+
+  // Tableau par membre
+  let html = '<table><thead><tr><th>Membre</th><th>Floquage</th><th>Articles</th><th>Montant</th></tr></thead><tbody>';
+  commandesPretes.forEach(c => {
+    const dj = c.details_json || {};
+    const floq = dj.floquage || "—";
+    const arts = (dj.articles || []).map(a =>
+      a.article + " " + a.taille + " x" + a.quantite
+    ).join("<br>") || "—";
+    html += "<tr>" +
+      "<td>" + (c.membre_nom || "—") + "</td>" +
+      "<td>" + floq + "</td>" +
+      '<td class="td-art">' + arts + "</td>" +
+      "<td>" + (c.montant || 0) + " €</td>" +
+      "</tr>";
+  });
+  html += "</tbody></table>";
+
+  // Récap groupé par article+taille
+  const totaux = {};
+  commandesPretes.forEach(c => {
+    const dj = c.details_json || {};
+    (dj.articles || []).forEach(a => {
+      const cle = a.article + " " + a.taille;
+      totaux[cle] = (totaux[cle] || 0) + (a.quantite || 0);
+    });
+  });
+  let recapHtml = '<div class="summary-box"><div class="summary-title">Total à commander au fournisseur</div><div class="summary-line">';
+  const cles = Object.keys(totaux).sort();
+  if (cles.length === 0) {
+    recapHtml += "Aucun détail disponible";
+  } else {
+    recapHtml += cles.map(k => k + " : <strong>" + totaux[k] + "</strong>").join("<br>");
+  }
+  recapHtml += "</div></div>";
+
+  // Bouton générer
+  const dateDebut = dateFR(commandesPretes[0].created_at);
+  const dateFin = dateFR(new Date().toISOString());
+  const libelle = "Commande du " + dateDebut + " au " + dateFin;
+
+  html += recapHtml;
+  html += '<button class="btn" id="btnGenerer" onclick="genererCampagne()">📥 Générer la campagne (' +
+    commandesPretes.length + ' commande' + (commandesPretes.length > 1 ? 's' : '') + ') — ' + libelle + '</button>';
+
+  zone.innerHTML = html;
+}
+
+// ── Construire le CSV ──
+function construireCSV(commandes, libelle) {
+  const sep = ";"; // Excel FR
+  let lignes = [];
+  lignes.push("Campagne" + sep + libelle);
+  lignes.push("");
+  lignes.push(["Date commande", "Membre", "Floquage", "Article", "Taille", "Quantite", "Prix unitaire", "Reference"].join(sep));
+
+  commandes.forEach(c => {
+    const dj = c.details_json || {};
+    const floq = (dj.floquage || "").replace(/;/g, ",");
+    const dateC = dateFR(c.created_at);
+    (dj.articles || []).forEach(a => {
+      lignes.push([
+        dateC,
+        (c.membre_nom || "").replace(/;/g, ","),
+        floq,
+        a.article,
+        a.taille,
+        a.quantite,
+        a.prix_unitaire,
+        c.numero || ""
+      ].join(sep));
+    });
+  });
+
+  // Récap quantités
+  lignes.push("");
+  lignes.push("RECAPITULATIF QUANTITES");
+  const totaux = {};
+  commandes.forEach(c => {
+    const dj = c.details_json || {};
+    (dj.articles || []).forEach(a => {
+      const cle = a.article + " " + a.taille;
+      totaux[cle] = (totaux[cle] || 0) + (a.quantite || 0);
+    });
+  });
+  Object.keys(totaux).sort().forEach(k => {
+    lignes.push(k + sep + totaux[k]);
+  });
+
+  return lignes.join("\r\n");
+}
+
+// ── Télécharger un CSV ──
+function telechargerCSV(contenu, nomFichier) {
+  const BOM = "\uFEFF"; // accents Excel
+  const blob = new Blob([BOM + contenu], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomFichier;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Générer la campagne : CSV + figer ──
+async function genererCampagne() {
+  if (commandesPretes.length === 0) return;
+
+  const btn = document.getElementById("btnGenerer");
+  btn.disabled = true;
+  btn.textContent = "Génération…";
+
+  const dateDebut = dateFR(commandesPretes[0].created_at);
+  const dateFin = dateFR(new Date().toISOString());
+  const libelle = "Commande du " + dateDebut + " au " + dateFin;
+
+  // 1) CSV
+  const csv = construireCSV(commandesPretes, libelle);
+  const nomFichier = "campagne_" + dateFin.replace(/\//g, "-") + ".csv";
+  telechargerCSV(csv, nomFichier);
+
+  // 2) Figer les lignes
+  const ids = commandesPretes.map(c => c.id);
+  const { error } = await sb
+    .from("factures")
+    .update({ campagne: libelle })
+    .in("id", ids);
+
+  if (error) {
+    console.error(error);
+    showToast("CSV téléchargé mais erreur de verrouillage. Vérifiez la base.", true);
+    btn.disabled = false;
+    return;
+  }
+
+  showToast("Campagne générée et figée ✓");
+  chargerPretes();
+  chargerHistorique();
+}
+
+// ── Historique des campagnes ──
+async function chargerHistorique() {
+  const { data, error } = await sb
+    .from("factures")
+    .select("id, numero, membre_nom, montant, created_at, details_json, campagne")
+    .eq("type", "commande_vetements")
+    .not("campagne", "is", null)
+    .order("created_at", { ascending: false });
+
+  const zone = document.getElementById("histoContent");
+
+  if (error) {
+    zone.innerHTML = '<div class="empty">Erreur de chargement.</div>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    zone.innerHTML = '<div class="empty">Aucune campagne transmise pour l\'instant.</div>';
+    return;
+  }
+
+  // Grouper par libellé campagne
+  const groupes = {};
+  data.forEach(c => {
+    const lib = c.campagne;
+    if (!groupes[lib]) groupes[lib] = [];
+    groupes[lib].push(c);
+  });
+
+  let html = "";
+  Object.keys(groupes).forEach(lib => {
+    const cmds = groupes[lib];
+    const nb = cmds.length;
+    const total = cmds.reduce((s, c) => s + (c.montant || 0), 0);
+    html += '<div class="histo-item">' +
+      '<div class="histo-info">' +
+        '<div class="histo-libelle">' + lib + '</div>' +
+        '<div class="histo-meta">' + nb + ' commande' + (nb > 1 ? 's' : '') + ' · ' + total + ' € · transmis</div>' +
+      '</div>' +
+      '<button class="histo-btn" onclick="retelecharger(\'' + lib.replace(/'/g, "\\'") + '\')">⬇ CSV</button>' +
+    '</div>';
+  });
+
+  zone.innerHTML = html;
+}
+
+// ── Re-télécharger une vieille campagne ──
+async function retelecharger(libelle) {
+  const { data, error } = await sb
+    .from("factures")
+    .select("id, numero, membre_nom, montant, created_at, details_json, campagne")
+    .eq("type", "commande_vetements")
+    .eq("campagne", libelle)
+    .order("created_at", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    showToast("Impossible de recharger cette campagne.", true);
+    return;
+  }
+
+  const csv = construireCSV(data, libelle);
+  const datePart = libelle.split(" au ").pop() || "campagne";
+  const nomFichier = "campagne_" + datePart.replace(/\//g, "-") + ".csv";
+  telechargerCSV(csv, nomFichier);
+  showToast("CSV re-téléchargé ✓");
+}
+</script>
+</body>
+</html>
