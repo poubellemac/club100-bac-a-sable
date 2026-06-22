@@ -183,7 +183,7 @@
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
   <div class="admin-section">
-    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.1</span></div>
+    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.2</span></div>
 
     <div class="card">
       <div class="card-title">Événement en cours</div>
@@ -357,13 +357,21 @@
 
   // Cherche le membre par nom complet. Si trouvé : facture en_attente + notif ASSO
   async function genererFactureEvent(nomComplet) {
+    // Normalise : minuscules, sans accents, tirets→espaces, espaces multiples réduits
+    const normaliser = (s) => (s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // retire les accents
+      .replace(/[-_]/g, ' ')                              // tirets → espaces
+      .replace(/\s+/g, ' ')                               // espaces multiples → un seul
+      .trim();
+
     let membre = null;
     const { data: membres } = await sb.from('membres').select('*').neq('role', 'admin');
     if (membres && membres.length) {
-      const cible = nomComplet.toLowerCase().replace(/\s+/g, ' ').trim();
+      const cible = normaliser(nomComplet);
       membre = membres.find(m => {
-        const pn = ((m.prenom || '') + ' ' + (m.nom || '')).toLowerCase().trim();
-        const np = ((m.nom || '') + ' ' + (m.prenom || '')).toLowerCase().trim();
+        const pn = normaliser((m.prenom || '') + ' ' + (m.nom || ''));
+        const np = normaliser((m.nom || '') + ' ' + (m.prenom || ''));
         return pn === cible || np === cible;
       });
     }

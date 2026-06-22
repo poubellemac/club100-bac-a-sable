@@ -359,7 +359,7 @@
 
 <header>
   <h1>Club 100 Reims en Champagne</h1>
-  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.1</span></p>
+  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.2</span></p>
 </header>
 
 <nav>
@@ -541,10 +541,6 @@ const SUPABASE_URL  = 'https://hepwtaxbnxnpmancrrxe.supabase.co';
 const SUPABASE_KEY  = 'sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3';
 const ADMIN_PWD     = 'admin';
 
-const EMAILJS_PUBLIC_KEY  = 'JMg0VaPvHEtJPKJHY';
-const EMAILJS_SERVICE_ID  = 'service_2jxbi28';
-const EMAILJS_TEMPLATE_ID = 'template_87zbs1w'; // à adapter si nouveau template créé
-
 const ASSO = {
   nom:     'Club 100 Reims en Champagne',
   adresse: 'Chez HI Studio Photo – Bâtiment C1',
@@ -568,10 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('date-prestation').value = today.toISOString().split('T')[0];
   // Charger le prochain numéro
   chargerProchainNumero();
-  // EmailJS
-  if (typeof emailjs !== 'undefined') {
-    emailjs.init(EMAILJS_PUBLIC_KEY);
-  }
 });
 
 // ══════════════════════════════════════════════════════
@@ -882,20 +874,43 @@ async function validerEtGenerer() {
   const EJS_SVC = "service_eh2k91k";
 
   // 1. Sauvegarder dans Supabase — statut paye (admin a deja le paiement)
+  //    Numéro unique : si collision (contrainte UNIQUE), on régénère et on réessaie.
+  let numeroFinal = d.numero;
+  let enregistre = false;
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
-      method: 'POST',
-      headers: { ...supaHeaders(), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        numero:      d.numero,
-        type:        d.type || 'invite',
-        membre_nom:  d.prenom + ' ' + d.nom,
-        montant:     d.montant,
-        statut:      'paye',
-        description: d.description
-      })
-    });
-    toast('✓ Facture enregistree', 'success');
+    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    for (let tentative = 0; tentative < 6; tentative++) {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/factures`, {
+        method: 'POST',
+        headers: { ...supaHeaders(), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          numero:      numeroFinal,
+          type:        d.type || 'invite',
+          membre_nom:  d.prenom + ' ' + d.nom,
+          montant:     d.montant,
+          statut:      'paye',
+          description: d.description
+        })
+      });
+      if (resp.ok) { enregistre = true; break; }
+      if (resp.status === 409) {
+        // numéro déjà pris → recalculer le suivant et réessayer
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/factures?numero=like.${dateStr}*&select=numero&order=numero.desc&limit=1`, { headers: supaHeaders() });
+        const data = await r.json();
+        let seq = 1;
+        if (data && data.length > 0) { const p = data[0].numero.split('-'); if (p.length === 2) seq = parseInt(p[1]) + 1; }
+        numeroFinal = `${dateStr}-${String(seq).padStart(3, '0')}`;
+        continue;
+      }
+      break; // autre erreur → on sort
+    }
+    if (enregistre) {
+      d.numero = numeroFinal;  // pour le mail / PDF qui suivent
+      document.getElementById('display-numero').textContent = numeroFinal;
+      toast('✓ Facture enregistree', 'success');
+    } else {
+      toast('⚠ Archivage Supabase echoue', 'error');
+    }
   } catch(e) {
     toast('⚠ Archivage Supabase echoue', 'error');
   }

@@ -47,7 +47,7 @@
 
 <div class="header">
   <div>
-    <div class="header-title">Adhérents <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.1</span></div>
+    <div class="header-title">Adhérents <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.2</span></div>
     <div class="header-sub">Club 100 Reims</div>
   </div>
   <button class="btn-retour" onclick="window.location.href='admin.html'">← Retour</button>
@@ -55,9 +55,9 @@
 
 <div class="controls">
   <div class="tri-bar">
-    <button class="btn-tri active" id="tri-prenom" onclick="setTri('prenom')">A→Z Prénom</button>
-    <button class="btn-tri" id="tri-nom" onclick="setTri('nom')">A→Z Nom</button>
-    <button class="btn-tri" id="tri-date" onclick="setTri('date')">↑ Date</button>
+    <button class="btn-tri active" id="tri-prenom" onclick="setTri('prenom')">Prénom ▲</button>
+    <button class="btn-tri" id="tri-nom" onclick="setTri('nom')">Nom</button>
+    <button class="btn-tri" id="tri-date" onclick="setTri('date')">Date</button>
   </div>
   <input class="search-input" type="text" id="search" placeholder="Rechercher par nom, prénom, téléphone, email…" oninput="afficher()" />
   <div class="stat-label" id="compteur">Chargement…</div>
@@ -70,7 +70,7 @@
 <script>
 const SUPABASE_URL = "https://hepwtaxbnxnpmancrrxe.supabase.co";
 const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
-let sb, tousAdherents = [], triCourant = 'prenom';
+let sb, tousAdherents = [], triCourant = 'prenom', sensCroissant = true;
 
 window.addEventListener('DOMContentLoaded', async () => {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -80,8 +80,20 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setTri(tri) {
-  triCourant = tri;
-  ['prenom','nom','date'].forEach(t => document.getElementById('tri-'+t).classList.toggle('active', t === tri));
+  // Reclic sur le même critère → inverse le sens. Nouveau critère → repart croissant.
+  if (tri === triCourant) {
+    sensCroissant = !sensCroissant;
+  } else {
+    triCourant = tri;
+    sensCroissant = true;
+  }
+  const fleche = sensCroissant ? ' ▲' : ' ▼';
+  const labels = { prenom: 'Prénom', nom: 'Nom', date: 'Date' };
+  ['prenom','nom','date'].forEach(t => {
+    const btn = document.getElementById('tri-'+t);
+    btn.classList.toggle('active', t === triCourant);
+    btn.textContent = labels[t] + (t === triCourant ? fleche : '');
+  });
   afficher();
 }
 
@@ -93,9 +105,11 @@ function afficher() {
     (m.email||'').toLowerCase().includes(search)
   );
   liste = [...liste].sort((a,b) => {
-    if (triCourant === 'nom') return a.nom.localeCompare(b.nom);
-    if (triCourant === 'date') return new Date(a.date_inscription) - new Date(b.date_inscription);
-    return a.prenom.localeCompare(b.prenom);
+    let cmp;
+    if (triCourant === 'nom') cmp = a.nom.localeCompare(b.nom);
+    else if (triCourant === 'date') cmp = new Date(a.date_inscription) - new Date(b.date_inscription);
+    else cmp = a.prenom.localeCompare(b.prenom);
+    return sensCroissant ? cmp : -cmp;
   });
   document.getElementById('compteur').textContent = liste.length + " adhérent" + (liste.length > 1 ? "s" : "");
   const el = document.getElementById('liste');
