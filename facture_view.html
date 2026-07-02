@@ -146,6 +146,7 @@ body {
 <body>
 
 <div class="actions-bar" id="actionsBar" style="display:none;">
+  <span style="margin-right:auto;background:#C9A84C;color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;align-self:center;">v1.1</span>
   <button class="btn-action btn-retour" onclick="window.location.href='factures_admin.html'">← Retour</button>
   <button class="btn-action btn-print" onclick="window.print()">🖨 Imprimer</button>
   <button class="btn-action btn-mail" onclick="envoyerParMail()" id="btnMail">✉ Envoyer par mail</button>
@@ -364,7 +365,7 @@ async function envoyerParMail() {
   const lienFacture = window.location.origin + window.location.pathname + "?id=" + f.id;
 
   try {
-    await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -387,13 +388,19 @@ async function envoyerParMail() {
       })
     });
 
+    const corps = await resp.text();
+    console.log("EmailJS status:", resp.status, "| reponse:", corps, "| to_email:", membreCourant.email);
+    if (!resp.ok) {
+      throw new Error("EmailJS a refusé l'envoi (code " + resp.status + ")");
+    }
+
     btn.textContent = "✓ Envoyé !";
     setTimeout(() => { btn.disabled = false; btn.textContent = "✉ Envoyer par mail"; }, 3000);
   } catch(e) {
     console.error(e);
     btn.disabled = false;
     btn.textContent = "✉ Envoyer par mail";
-    alert("Erreur envoi mail. Réessayez.");
+    alert("Erreur envoi mail : " + e.message + "\n(Voir la console F12 pour le détail.)");
   }
 }
 </script>

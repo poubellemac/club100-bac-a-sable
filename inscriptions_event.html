@@ -183,7 +183,7 @@
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
   <div class="admin-section">
-    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.2</span></div>
+    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.3</span></div>
 
     <div class="card">
       <div class="card-title">Événement en cours</div>
@@ -298,11 +298,13 @@
   }
 
   async function envoyerMail(tpl, params) {
-    return fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ service_id: EJS_SERVICE, template_id: tpl, user_id: EJS_PUBLIC, template_params: params })
     });
+    console.log("EmailJS status:", resp.status, "| template:", tpl);
+    return resp;
   }
 
   async function genererNumeroFacture() {
@@ -395,7 +397,7 @@
       }]);
 
       // ÉTAPE 1 : notifier l'ASSO (admin) qu'une facture est à valider
-      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      const respNotif = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -413,6 +415,12 @@
           }
         })
       });
+
+      const corpsNotif = await respNotif.text();
+      console.log("EmailJS status:", respNotif.status, "| reponse:", corpsNotif);
+      if (!respNotif.ok) {
+        return " ⚠️ Demande enregistrée, mais la notification n'a pas pu être envoyée (code " + respNotif.status + ").";
+      }
 
       return ' 📄 Votre demande de facture a été transmise. Elle vous sera envoyée après validation.';
     } catch (e) {
