@@ -481,13 +481,12 @@ async function validerMembre(id) {
 
   // 2. Créer la facture avec numéro unique (anti-collision)
   //    Statut 'paye' directement : la validation membre fait tout en 1 fois.
-  //    Si un nom de facturation est renseigné, il remplace prénom+nom sur la facture.
-  const nomPourFacture = (membre.nom_facturation && membre.nom_facturation.trim())
-    ? membre.nom_facturation.trim()
-    : membre.prenom + ' ' + membre.nom;
+  //    membre_nom reste toujours le vrai prénom+nom ; nom_facturation est un champ
+  //    séparé, rempli seulement si le membre a indiqué un nom de facturation différent.
   const numero = await insererFactureUnique({
     type: 'cotisation',
-    membre_nom: nomPourFacture,
+    membre_nom: membre.prenom + ' ' + membre.nom,
+    nom_facturation: (membre.nom_facturation && membre.nom_facturation.trim()) ? membre.nom_facturation.trim() : null,
     montant: parseFloat(membre.type_cotisation),
     statut: 'paye',
     description: 'Cotisation Club 100 Reims — ' + membre.type_cotisation + '€',
