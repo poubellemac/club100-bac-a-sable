@@ -278,12 +278,12 @@ function afficherFacture(f) {
     <!-- DESTINATAIRE -->
     <div class="fact-destinataire">
       <div class="fact-label">Destinataire</div>
-      <div class="fact-dest-nom">${nomMembre}</div>
-      ${f.nom_facturation ? `<div class="fact-dest-nom" style="font-size:12px;font-weight:400;color:#777;margin-top:2px;">Facturé au nom de : ${f.nom_facturation}</div>` : ""}
-      <div class="fact-dest-detail">
-        ${adresseMembre ? adresseMembre + "<br>" : ""}
-        ${emailMembre !== "—" ? emailMembre : ""}
-      </div>
+      ${f.nom_facturation
+        ? `<div class="fact-dest-nom">${f.nom_facturation}</div>
+           <div class="fact-dest-detail">${nomMembre}${adresseMembre ? "<br>" + adresseMembre : ""}${emailMembre !== "—" ? "<br>" + emailMembre : ""}</div>`
+        : `<div class="fact-dest-nom">${nomMembre}</div>
+           <div class="fact-dest-detail">${adresseMembre ? adresseMembre + "<br>" : ""}${emailMembre !== "—" ? emailMembre : ""}</div>`
+      }
     </div>
 
     <!-- TABLEAU PRESTATION -->

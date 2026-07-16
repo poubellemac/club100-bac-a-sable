@@ -149,7 +149,6 @@ body {
     <div>
       <div class="header-title">Gestion des Factures</div>
       <div class="header-sub">Club 100 Reims</div>
-      <div class="version-tag">v1.1</div>
     </div>
   </div>
   <div class="btn-row">
@@ -369,6 +368,7 @@ function afficherListe(liste) {
         </div>
         <div style="flex:1;min-width:0;">
           <div class="facture-nom">${nom}</div>
+          ${f.nom_facturation ? `<div class="facture-desc" style="opacity:0.6;">Facturé au nom de : ${f.nom_facturation}</div>` : ""}
           <div class="facture-desc" title="${desc}">${desc}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
