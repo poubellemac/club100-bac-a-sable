@@ -250,8 +250,8 @@ function afficherFacture(f) {
   const statut = f.statut === "paye" ? "payé" : "en attente";
   const badgeCls = f.statut === "paye" ? "statut-paye" : "statut-attente";
 
-  const emailMembre = membreCourant ? membreCourant.email : "—";
-  const adresseMembre = membreCourant ? (membreCourant.adresse || "") : "";
+  const emailMembre = f.email || (membreCourant ? membreCourant.email : "—") || "—";
+  const adresseMembre = f.adresse || (membreCourant ? (membreCourant.adresse || "") : "");
   const nomMembre = f.membre_nom || "—";
 
   const html = `

@@ -889,7 +889,9 @@ async function validerEtGenerer() {
           membre_nom:  d.prenom + ' ' + d.nom,
           montant:     d.montant,
           statut:      'paye',
-          description: d.description
+          description: d.description,
+          adresse:     d.adresse || '',
+          email:       d.mail || ''
         })
       });
       if (resp.ok) { enregistre = true; break; }
