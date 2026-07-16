@@ -367,17 +367,14 @@ function afficherListe(liste) {
           <div style="font-size:11px;color:var(--or-light);opacity:0.4;margin-top:2px;">${dateStr}</div>
         </div>
         <div style="flex:1;min-width:0;">
-          <div class="facture-nom">${nom}</div>
-          ${f.nom_facturation ? `<div class="facture-desc" style="opacity:0.6;">Facturé au nom de : ${f.nom_facturation}</div>` : ""}
+          <div class="facture-nom">${nom}${f.nom_facturation ? " · " + f.nom_facturation : ""}</div>
           <div class="facture-desc" title="${desc}">${desc}</div>
         </div>
-        <div style="text-align:right;flex-shrink:0;">
+        <div style="text-align:right;flex-shrink:0;display:flex;align-items:center;gap:8px;">
           <div class="facture-montant">${montant} €</div>
           <span class="badge-type ${badgeCls}">${label}</span>
           ${statutBadge}
-          <div style="margin-top:8px;">
-            ${boutonValider}<button onclick="ouvrirFacture(${f.id})" style="font-size:11px;padding:4px 12px;background:#C9A84C;color:#0F0F0F;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:Lato,sans-serif;">Éditer</button>
-          </div>
+          ${boutonValider}<button onclick="ouvrirFacture(${f.id})" style="font-size:11px;padding:4px 12px;background:#C9A84C;color:#0F0F0F;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-family:Lato,sans-serif;">Éditer</button>
         </div>
       </div>`;
   });
