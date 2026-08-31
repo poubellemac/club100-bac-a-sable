@@ -29,6 +29,8 @@ body {
 }
 .btn-mail  { background: #C9A84C; color: #0F0F0F; }
 .btn-print { background: #333; color: #fff; }
+.btn-annuler { background: #8B1A1A; color: #fff; }
+.btn-annuler:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-retour { background: transparent; border: 1px solid #ccc; color: #555; }
 .btn-action:hover { opacity: 0.85; }
 
@@ -116,6 +118,13 @@ body {
 }
 .fact-paiement strong { color: #1a1a1a; }
 
+/* ANNULATION */
+.fact-annulation {
+  background: #fdeeee; border: 1px solid #f3c8c8; border-radius: 6px;
+  padding: 14px 16px; margin-bottom: 24px; font-size: 12px; color: #8B1A1A;
+  line-height: 1.8;
+}
+
 /* PIED */
 .fact-footer {
   border-top: 1px solid #eee; padding-top: 16px;
@@ -130,6 +139,7 @@ body {
 }
 .statut-attente { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
 .statut-paye    { background: #d4edda; color: #155724; border: 1px solid #28a745; }
+.statut-annulee { background: #f8d7da; color: #721c24; border: 1px solid #dc3545; }
 
 /* IMPRESSION */
 @media print {
@@ -149,6 +159,7 @@ body {
   <button class="btn-action btn-retour" onclick="window.location.href='factures_admin.html'">← Retour</button>
   <button class="btn-action btn-print" onclick="window.print()">🖨 Imprimer</button>
   <button class="btn-action btn-mail" onclick="envoyerParMail()" id="btnMail">✉ Envoyer par mail</button>
+  <button class="btn-action btn-annuler" onclick="annulerFacture()" id="btnAnnuler">🚫 Annuler la facture</button>
 </div>
 
 <div class="facture-sheet" id="factureSheet">
@@ -239,6 +250,16 @@ async function chargerFacture(id) {
 
   afficherFacture(data);
   document.getElementById("actionsBar").style.display = "flex";
+
+  // Facture déjà annulée : on désactive l'envoi mail et le bouton "Annuler" (déjà fait)
+  const btnMail = document.getElementById("btnMail");
+  const btnAnnuler = document.getElementById("btnAnnuler");
+  if (data.statut === "annulee") {
+    btnMail.disabled = true;
+    btnMail.title = "Facture annulée — envoi désactivé";
+    btnAnnuler.disabled = true;
+    btnAnnuler.textContent = "🚫 Déjà annulée";
+  }
 }
 
 function afficherFacture(f) {
@@ -246,12 +267,18 @@ function afficherFacture(f) {
   const montant = parseFloat(f.montant || 0).toLocaleString("fr-FR", {minimumFractionDigits:2});
   const type = TYPE_LABELS[f.type] || f.type || "Prestation";
   const desc = f.description || type;
-  const statut = f.statut === "paye" ? "payé" : "en attente";
-  const badgeCls = f.statut === "paye" ? "statut-paye" : "statut-attente";
+
+  let statutLabel = "en attente", badgeCls = "statut-attente";
+  if (f.statut === "paye") { statutLabel = "payé"; badgeCls = "statut-paye"; }
+  if (f.statut === "annulee") { statutLabel = "annulée"; badgeCls = "statut-annulee"; }
 
   const emailMembre = f.email || (membreCourant ? membreCourant.email : "—") || "—";
   const adresseMembre = f.adresse || (membreCourant ? (membreCourant.adresse || "") : "");
   const nomMembre = f.membre_nom || "—";
+
+  const blocAnnulation = (f.statut === "annulee")
+    ? `<div class="fact-annulation"><strong>🚫 Facture annulée.</strong><br>Motif : ${f.commentaire_annulation || "non renseigné"}</div>`
+    : "";
 
   const html = `
     <!-- EN-TÊTE -->
@@ -270,7 +297,7 @@ function afficherFacture(f) {
         <div class="fact-numero">N° ${f.numero || "—"}</div>
         <div class="fact-date">Date d'émission : ${date}</div>
         <div style="margin-top:8px;">
-          <span class="statut-badge ${badgeCls}">${statut}</span>
+          <span class="statut-badge ${badgeCls}">${statutLabel}</span>
         </div>
       </div>
     </div>
@@ -278,12 +305,11 @@ function afficherFacture(f) {
     <!-- DESTINATAIRE -->
     <div class="fact-destinataire">
       <div class="fact-label">Destinataire</div>
-      ${f.nom_facturation
-        ? `<div class="fact-dest-nom">${f.nom_facturation}</div>
-           <div class="fact-dest-detail">${nomMembre}${adresseMembre ? "<br>" + adresseMembre : ""}${emailMembre !== "—" ? "<br>" + emailMembre : ""}</div>`
-        : `<div class="fact-dest-nom">${nomMembre}</div>
-           <div class="fact-dest-detail">${adresseMembre ? adresseMembre + "<br>" : ""}${emailMembre !== "—" ? emailMembre : ""}</div>`
-      }
+      <div class="fact-dest-nom">${nomMembre}</div>
+      <div class="fact-dest-detail">
+        ${adresseMembre ? adresseMembre + "<br>" : ""}
+        ${emailMembre !== "—" ? emailMembre : ""}
+      </div>
     </div>
 
     <!-- TABLEAU PRESTATION -->
@@ -324,9 +350,11 @@ function afficherFacture(f) {
       </div>
     </div>
 
+    ${blocAnnulation}
+
     <!-- PAIEMENT -->
     <div class="fact-paiement">
-      <strong>Règlement :</strong> ${f.statut === "paye" ? "Réglé" : "À régler par virement bancaire"}<br>
+      <strong>Règlement :</strong> ${f.statut === "paye" ? "Réglé" : (f.statut === "annulee" ? "Sans objet (facture annulée)" : "À régler par virement bancaire")}<br>
       <strong>IBAN :</strong> FR76 1020 6000 0198 7559 9124 403<br>
       <strong>Référence virement :</strong> ${f.numero || "—"}
     </div>
@@ -342,8 +370,30 @@ function afficherFacture(f) {
   document.getElementById("factureSheet").innerHTML = html;
 }
 
+async function annulerFacture() {
+  if (!factureCourante) return;
+  if (factureCourante.statut === "annulee") return;
+
+  const motif = prompt(
+    "Annuler la facture n° " + factureCourante.numero + " ?\n\nMerci d'indiquer le motif de l'annulation (obligatoire) :"
+  );
+  if (motif === null) return;
+  if (!motif.trim()) { alert("Le motif est obligatoire — annulation non effectuée."); return; }
+
+  const { error } = await sb.from("factures").update({
+    statut: "annulee",
+    commentaire_annulation: motif.trim()
+  }).eq("id", factureCourante.id);
+
+  if (error) { alert("Erreur Supabase : " + error.message); return; }
+
+  alert("🚫 Facture annulée.");
+  await chargerFacture(factureCourante.id);
+}
+
 async function envoyerParMail() {
   if (!factureCourante) return;
+  if (factureCourante.statut === "annulee") { alert("Cette facture est annulée — envoi désactivé."); return; }
   if (!membreCourant || !membreCourant.email) {
     alert("Email du membre introuvable — vérifiez dans Supabase.");
     return;

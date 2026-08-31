@@ -710,10 +710,14 @@
       alert('⛔ Enregistrement refusé : une facture existe pour cette personne.\n\nNom, présence et bouteille ne peuvent pas être modifiés tant que la facture n\'est pas annulée (Factures Admin). Seul le commentaire peut être changé.');
       return;
     }
-    const { error } = await sb.from('inscriptions').update({
+    const { data, error } = await sb.from('inscriptions').update({
       nom: nom, presence: editChoice, commentaire: commentaire || null, bouteille: bouteille
-    }).eq('id', editingId);
+    }).eq('id', editingId).select();
     if (error) { alert('Erreur : ' + error.message); return; }
+    if (!data || data.length === 0) {
+      alert('⚠️ Aucune modification enregistrée par Supabase (0 ligne mise à jour).\n\nCela vient probablement d\'un droit d\'accès (RLS) manquant sur la table inscriptions pour les modifications — voir le fichier fix_update_inscriptions_bac_a_sable.sql à exécuter dans le SQL Editor.');
+      return;
+    }
     hideEditModal();
     await loadParticipants();
     showToast('✅ Inscription modifiée');
