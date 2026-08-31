@@ -640,24 +640,53 @@
   }
 
   // ─── Édition / suppression individuelle d'une inscription ───
-  let editingId = null, editChoice = null;
+  // RÈGLE : si une facture (non annulée) existe pour cette personne, nom/présence/
+  // bouteille sont VERROUILLÉS (ils ont servi à calculer le montant facturé).
+  // Seul le commentaire reste modifiable. Pour changer les autres champs, il faut
+  // d'abord annuler la facture dans Factures Admin.
+  let editingId = null, editChoice = null, editLocked = false, editOriginal = null;
 
   async function editInscription(id) {
     const p = participants.find(x => x.id === id);
     if (!p) return;
     editingId = id;
     editChoice = p.presence;
+    editOriginal = { nom: p.nom, presence: p.presence, bouteille: !!p.bouteille };
     document.getElementById('editNomInput').value = p.nom;
     document.getElementById('editCommentInput').value = p.commentaire || '';
     document.getElementById('editBouteilleInput').checked = !!p.bouteille;
     document.getElementById('editBtnOui').classList.toggle('selected', p.presence === true);
     document.getElementById('editBtnNon').classList.toggle('selected', p.presence === false);
     document.getElementById('editFactureWarning').style.display = 'none';
+    setEditLock(false);
     document.getElementById('editModal').classList.add('show');
-    await afficherAlerteFacture(p.nom, 'editFactureWarning');
+    const match = await verifierFactureExistante(p.nom);
+    if (match) {
+      const warn = document.getElementById('editFactureWarning');
+      warn.innerHTML = '🔒 Une facture existe pour cette personne : n° ' + esc(match.numero) +
+        ', montant ' + match.montant + '€, statut « ' + esc(match.statut) + ' ». ' +
+        'Nom, présence et bouteille sont <b>verrouillés</b> tant que cette facture n\'est pas annulée ' +
+        '(seul le commentaire reste modifiable). Pour annuler la facture, allez dans Factures Admin.';
+      warn.style.display = 'block';
+      setEditLock(true);
+    }
+  }
+
+  function setEditLock(locked) {
+    editLocked = locked;
+    document.getElementById('editNomInput').disabled = locked;
+    document.getElementById('editNomInput').style.opacity = locked ? '0.5' : '';
+    document.getElementById('editBouteilleInput').disabled = locked;
+    document.getElementById('editBouteilleInput').style.opacity = locked ? '0.5' : '';
+    ['editBtnOui', 'editBtnNon'].forEach(function(elId) {
+      const el = document.getElementById(elId);
+      el.style.pointerEvents = locked ? 'none' : '';
+      el.style.opacity = locked ? '0.4' : '';
+    });
   }
 
   function setEditChoice(val) {
+    if (editLocked) return;
     editChoice = val;
     document.getElementById('editBtnOui').classList.toggle('selected', val === true);
     document.getElementById('editBtnNon').classList.toggle('selected', val === false);
@@ -665,25 +694,7 @@
 
   function hideEditModal() {
     document.getElementById('editModal').classList.remove('show');
-    editingId = null;
-  }
-
-  // Cherche une facture événement existante au nom donné et affiche un avertissement si trouvée.
-  // Ne modifie JAMAIS la table factures — c'est juste une alerte pour l'admin.
-  async function afficherAlerteFacture(nom, targetId) {
-    const target = document.getElementById(targetId);
-    if (!target) return null;
-    const { data: factures } = await sb.from('factures').select('*').eq('type', 'evenement');
-    if (!factures || !factures.length) return null;
-    const cible = normaliserNom(nom);
-    const match = factures.find(f => normaliserNom(f.membre_nom) === cible);
-    if (match) {
-      target.innerHTML = '⚠️ Une facture existe déjà pour cette personne : n° ' + esc(match.numero) +
-        ', montant ' + match.montant + '€, statut « ' + esc(match.statut) + ' ». ' +
-        'Cette facture ne sera PAS modifiée automatiquement — pensez à la corriger vous-même dans Factures Admin si besoin.';
-      target.style.display = 'block';
-    }
-    return match || null;
+    editingId = null; editLocked = false; editOriginal = null;
   }
 
   async function saveEditInscription() {
@@ -692,6 +703,13 @@
     const commentaire = document.getElementById('editCommentInput').value.trim();
     const bouteille = document.getElementById('editBouteilleInput').checked;
     if (!nom || editChoice === null) { alert('Le nom et la présence sont obligatoires.'); return; }
+    // Sécurité : même si les champs sont normalement verrouillés dans l'écran,
+    // on refuse ici tout enregistrement qui toucherait nom/présence/bouteille
+    // alors qu'une facture existe pour cette personne.
+    if (editLocked && editOriginal && (nom !== editOriginal.nom || editChoice !== editOriginal.presence || bouteille !== editOriginal.bouteille)) {
+      alert('⛔ Enregistrement refusé : une facture existe pour cette personne.\n\nNom, présence et bouteille ne peuvent pas être modifiés tant que la facture n\'est pas annulée (Factures Admin). Seul le commentaire peut être changé.');
+      return;
+    }
     const { error } = await sb.from('inscriptions').update({
       nom: nom, presence: editChoice, commentaire: commentaire || null, bouteille: bouteille
     }).eq('id', editingId);
@@ -705,20 +723,21 @@
     const p = participants.find(x => x.id === id);
     if (!p) return;
     const match = await verifierFactureExistante(p.nom);
-    let msg = 'Supprimer l\'inscription de "' + p.nom + '" ?';
     if (match) {
-      msg += '\n\n⚠️ Une facture existe pour cette personne (n° ' + match.numero + ', ' + match.montant + '€, statut ' + match.statut + '). Elle ne sera PAS supprimée automatiquement — pensez à la gérer dans Factures Admin si besoin.';
+      alert('⛔ Suppression refusée : une facture existe pour cette personne (n° ' + match.numero + ', ' + match.montant + '€, statut « ' + match.statut + ' »).\n\nAnnulez d\'abord la facture dans Factures Admin, vous pourrez ensuite supprimer l\'inscription.');
+      return;
     }
-    if (!confirm(msg)) return;
+    if (!confirm('Supprimer l\'inscription de "' + p.nom + '" ?')) return;
     const { error } = await sb.from('inscriptions').delete().eq('id', id);
     if (error) { alert('Erreur : ' + error.message); return; }
     await loadParticipants();
     showToast('🗑 Inscription supprimée');
   }
 
-  // Variante silencieuse (pas d'affichage direct) utilisée avant suppression
+  // Cherche une facture événement ACTIVE (pas annulée) au nom donné.
+  // Ne modifie JAMAIS la table factures — sert uniquement à verrouiller/avertir.
   async function verifierFactureExistante(nom) {
-    const { data: factures } = await sb.from('factures').select('*').eq('type', 'evenement');
+    const { data: factures } = await sb.from('factures').select('*').eq('type', 'evenement').neq('statut', 'annulee');
     if (!factures || !factures.length) return null;
     const cible = normaliserNom(nom);
     return factures.find(f => normaliserNom(f.membre_nom) === cible) || null;
