@@ -202,7 +202,7 @@
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
   <div class="admin-section">
-    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.4</span></div>
+    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.5</span></div>
 
     <div class="card">
       <div class="card-title">Événement en cours</div>
@@ -248,6 +248,34 @@
     <div class="help-item"><b>🍾 Le club fournit la bouteille (+20€)</b><br>Si vous cochez cette case, pas besoin d'apporter votre propre bouteille : c'est le club qui la fournit. En échange, 20€ de plus s'ajoutent au montant à régler (sur la facture, ou à ajouter à votre paiement si vous ne demandez pas de facture).</div>
     <div class="help-item"><b>Commentaire</b><br>Facultatif : précisez par exemple si vous venez accompagné(e), une allergie, ou toute autre information utile à l'organisateur.</div>
     <button class="modal-close-btn" onclick="hideHelp()">Fermer</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <h3>✏️ Modifier l'inscription</h3>
+    <div class="info-msg" id="editFactureWarning" style="display:none; margin-bottom:1.25rem;"></div>
+    <label for="editNomInput">Nom et prénom</label>
+    <input type="text" id="editNomInput" />
+    <label>Présence</label>
+    <div class="choice-row">
+      <button class="choice-btn yes" id="editBtnOui" onclick="setEditChoice(true)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Je viens !
+      </button>
+      <button class="choice-btn no" id="editBtnNon" onclick="setEditChoice(false)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Je ne viens pas
+      </button>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:1.25rem; padding:10px 14px; background:var(--noir); border:1px solid var(--border); border-radius:8px;">
+      <input type="checkbox" id="editBouteilleInput" style="width:18px; height:18px; accent-color:var(--or); cursor:pointer; margin:0;" />
+      <label for="editBouteilleInput" style="margin:0; text-transform:none; letter-spacing:0; font-weight:400; cursor:pointer; font-size:13px;">🍾 Le club fournit la bouteille</label>
+    </div>
+    <label for="editCommentInput">Commentaire</label>
+    <textarea id="editCommentInput"></textarea>
+    <button class="admin-save-btn" onclick="saveEditInscription()">💾 Enregistrer</button>
+    <button class="admin-back-btn" onclick="hideEditModal()">Annuler</button>
   </div>
 </div>
 
@@ -335,6 +363,17 @@
   function showHelp() { document.getElementById('helpModal').classList.add('show'); }
   function hideHelp() { document.getElementById('helpModal').classList.remove('show'); }
 
+  // Normalise un nom : minuscules, sans accents, tirets→espaces, espaces multiples réduits
+  // (utilisé pour comparer un nom d'inscription à un nom de membre ou de facture)
+  function normaliserNom(s) {
+    return (s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   async function envoyerMail(tpl, params) {
     const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
       method: "POST",
@@ -405,21 +444,13 @@
 
   // Cherche le membre par nom complet. Si trouvé : facture en_attente + notif ASSO
   async function genererFactureEvent(nomComplet, veutBouteille) {
-    // Normalise : minuscules, sans accents, tirets→espaces, espaces multiples réduits
-    const normaliser = (s) => (s || '')
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // retire les accents
-      .replace(/[-_]/g, ' ')                              // tirets → espaces
-      .replace(/\s+/g, ' ')                               // espaces multiples → un seul
-      .trim();
-
     let membre = null;
     const { data: membres } = await sb.from('membres').select('*').neq('role', 'admin');
     if (membres && membres.length) {
-      const cible = normaliser(nomComplet);
+      const cible = normaliserNom(nomComplet);
       membre = membres.find(m => {
-        const pn = normaliser((m.prenom || '') + ' ' + (m.nom || ''));
-        const np = normaliser((m.nom || '') + ' ' + (m.prenom || ''));
+        const pn = normaliserNom((m.prenom || '') + ' ' + (m.nom || ''));
+        const np = normaliserNom((m.nom || '') + ' ' + (m.prenom || ''));
         return pn === cible || np === cible;
       });
     }
@@ -596,8 +627,101 @@
         : '<span class="badge no" style="font-size:10px;padding:3px 8px;">Absent</span>';
       const bottleIcon = p.bouteille ? '<span class="bottle-icon">🍾</span>' : '';
       const comment = p.commentaire ? '<div style="font-size:11px;color:var(--or-light);opacity:0.6;font-style:italic;">💬 ' + esc(p.commentaire) + '</div>' : '';
-      return '<div class="admin-list-item"><div><div style="font-weight:700;">' + bottleIcon + esc(p.nom) + '</div>' + comment + '</div>' + badge + '</div>';
+      return '<div class="admin-list-item" style="flex-direction:column;align-items:stretch;gap:6px;">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;">' +
+          '<div><div style="font-weight:700;">' + bottleIcon + esc(p.nom) + '</div>' + comment + '</div>' + badge +
+        '</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button class="admin-back-btn" style="margin-top:0;flex:1;padding:6px;font-size:11px;" onclick="editInscription(' + p.id + ')">✏️ Modifier</button>' +
+          '<button class="admin-danger-btn" style="margin-top:0;flex:1;padding:6px;font-size:11px;" onclick="deleteInscriptionSingle(' + p.id + ')">🗑 Supprimer</button>' +
+        '</div>' +
+      '</div>';
     }).join('');
+  }
+
+  // ─── Édition / suppression individuelle d'une inscription ───
+  let editingId = null, editChoice = null;
+
+  async function editInscription(id) {
+    const p = participants.find(x => x.id === id);
+    if (!p) return;
+    editingId = id;
+    editChoice = p.presence;
+    document.getElementById('editNomInput').value = p.nom;
+    document.getElementById('editCommentInput').value = p.commentaire || '';
+    document.getElementById('editBouteilleInput').checked = !!p.bouteille;
+    document.getElementById('editBtnOui').classList.toggle('selected', p.presence === true);
+    document.getElementById('editBtnNon').classList.toggle('selected', p.presence === false);
+    document.getElementById('editFactureWarning').style.display = 'none';
+    document.getElementById('editModal').classList.add('show');
+    await afficherAlerteFacture(p.nom, 'editFactureWarning');
+  }
+
+  function setEditChoice(val) {
+    editChoice = val;
+    document.getElementById('editBtnOui').classList.toggle('selected', val === true);
+    document.getElementById('editBtnNon').classList.toggle('selected', val === false);
+  }
+
+  function hideEditModal() {
+    document.getElementById('editModal').classList.remove('show');
+    editingId = null;
+  }
+
+  // Cherche une facture événement existante au nom donné et affiche un avertissement si trouvée.
+  // Ne modifie JAMAIS la table factures — c'est juste une alerte pour l'admin.
+  async function afficherAlerteFacture(nom, targetId) {
+    const target = document.getElementById(targetId);
+    if (!target) return null;
+    const { data: factures } = await sb.from('factures').select('*').eq('type', 'evenement');
+    if (!factures || !factures.length) return null;
+    const cible = normaliserNom(nom);
+    const match = factures.find(f => normaliserNom(f.membre_nom) === cible);
+    if (match) {
+      target.innerHTML = '⚠️ Une facture existe déjà pour cette personne : n° ' + esc(match.numero) +
+        ', montant ' + match.montant + '€, statut « ' + esc(match.statut) + ' ». ' +
+        'Cette facture ne sera PAS modifiée automatiquement — pensez à la corriger vous-même dans Factures Admin si besoin.';
+      target.style.display = 'block';
+    }
+    return match || null;
+  }
+
+  async function saveEditInscription() {
+    if (editingId === null) return;
+    const nom = document.getElementById('editNomInput').value.trim();
+    const commentaire = document.getElementById('editCommentInput').value.trim();
+    const bouteille = document.getElementById('editBouteilleInput').checked;
+    if (!nom || editChoice === null) { alert('Le nom et la présence sont obligatoires.'); return; }
+    const { error } = await sb.from('inscriptions').update({
+      nom: nom, presence: editChoice, commentaire: commentaire || null, bouteille: bouteille
+    }).eq('id', editingId);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    hideEditModal();
+    await loadParticipants();
+    showToast('✅ Inscription modifiée');
+  }
+
+  async function deleteInscriptionSingle(id) {
+    const p = participants.find(x => x.id === id);
+    if (!p) return;
+    const match = await verifierFactureExistante(p.nom);
+    let msg = 'Supprimer l\'inscription de "' + p.nom + '" ?';
+    if (match) {
+      msg += '\n\n⚠️ Une facture existe pour cette personne (n° ' + match.numero + ', ' + match.montant + '€, statut ' + match.statut + '). Elle ne sera PAS supprimée automatiquement — pensez à la gérer dans Factures Admin si besoin.';
+    }
+    if (!confirm(msg)) return;
+    const { error } = await sb.from('inscriptions').delete().eq('id', id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    await loadParticipants();
+    showToast('🗑 Inscription supprimée');
+  }
+
+  // Variante silencieuse (pas d'affichage direct) utilisée avant suppression
+  async function verifierFactureExistante(nom) {
+    const { data: factures } = await sb.from('factures').select('*').eq('type', 'evenement');
+    if (!factures || !factures.length) return null;
+    const cible = normaliserNom(nom);
+    return factures.find(f => normaliserNom(f.membre_nom) === cible) || null;
   }
   async function resetInscriptions() {
     if (!confirm('Supprimer TOUTES les inscriptions ? Action irréversible.')) return;
