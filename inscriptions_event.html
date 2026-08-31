@@ -46,6 +46,7 @@
   .submit-btn { width: 100%; padding: 13px; background: var(--or); color: var(--noir); border: none; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Lato', sans-serif; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; transition: background 0.18s, transform 0.1s; }
   .submit-btn:hover { background: var(--or-light); } .submit-btn:active { transform: scale(0.98); } .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .counters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; max-width: 540px; width: 100%; }
+  .counters-4 { grid-template-columns: repeat(4, 1fr); }
   .counter-card { background: var(--noir-soft); border: 1px solid var(--border); border-radius: 10px; padding: 12px 8px; text-align: center; }
   .counter-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--or-light); opacity: 0.5; margin-bottom: 4px; }
   .counter-num { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; line-height: 1; }
@@ -92,6 +93,17 @@
   .login-title { font-family: 'Playfair Display', serif; color: var(--or); font-size: 1.2rem; margin-bottom: 1.5rem; }
   .login-error { font-size: 13px; color: #E57373; margin-bottom: 10px; display: none; }
   #adminPanel { display: none; flex-direction: column; align-items: center; width: 100%; }
+  .counters-4 { grid-template-columns: repeat(4, 1fr); }
+  .help-btn { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background: rgba(201,168,76,0.15); border:1px solid var(--border-strong); color:var(--or); font-size:12px; font-weight:700; cursor:pointer; }
+  .help-btn:hover { background: rgba(201,168,76,0.3); }
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center; padding:1rem; }
+  .modal-overlay.show { display:flex; }
+  .modal-box { background:var(--noir-soft); border:1px solid var(--border-strong); border-radius:14px; padding:1.5rem; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; }
+  .modal-box h3 { font-family:'Playfair Display',serif; color:var(--or); font-size:1.1rem; margin-bottom:1rem; }
+  .modal-box .help-item { margin-bottom:1rem; font-size:14px; line-height:1.5; color:var(--blanc); }
+  .modal-box .help-item b { color:var(--or-light); }
+  .modal-close-btn { width:100%; padding:10px; background:var(--or); color:var(--noir); border:none; border-radius:10px; font-weight:700; cursor:pointer; margin-top:0.5rem; text-transform:uppercase; letter-spacing:0.05em; font-size:13px; font-family:'Lato',sans-serif; }
+  .bottle-icon { margin-right:4px; }
 </style>
 </head>
 <body>
@@ -122,7 +134,10 @@
   <div id="formulaireSection">
     <div class="divider"></div>
     <div class="card">
-      <div class="card-title">Votre réservation</div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Votre réservation</span>
+        <span class="help-btn" onclick="showHelp()" title="Aide">?</span>
+      </div>
       <label for="nomInput">Votre nom et prénom</label>
       <input type="text" id="nomInput" placeholder="Ex: Jean Dupont" />
       <label for="commentInput">Commentaire (optionnel)</label>
@@ -130,6 +145,10 @@
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:1.25rem; padding:10px 14px; background:var(--noir); border:1px solid var(--border); border-radius:8px;">
         <input type="checkbox" id="factureInput" style="width:18px; height:18px; accent-color:var(--or); cursor:pointer; margin:0;" />
         <label for="factureInput" style="margin:0; text-transform:none; letter-spacing:0; font-weight:400; cursor:pointer; font-size:13px;">📄 Je souhaite recevoir une facture (réservé aux membres)</label>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:1.25rem; padding:10px 14px; background:var(--noir); border:1px solid var(--border); border-radius:8px;">
+        <input type="checkbox" id="bouteilleInput" style="width:18px; height:18px; accent-color:var(--or); cursor:pointer; margin:0;" />
+        <label for="bouteilleInput" style="margin:0; text-transform:none; letter-spacing:0; font-weight:400; cursor:pointer; font-size:13px;">🍾 Le club fournit la bouteille (+<span id="prixBouteilleLabel">20</span>€)</label>
       </div>
       <label>Votre réponse</label>
       <div class="choice-row">
@@ -183,7 +202,7 @@
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
   <div class="admin-section">
-    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.3</span></div>
+    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.4</span></div>
 
     <div class="card">
       <div class="card-title">Événement en cours</div>
@@ -199,15 +218,17 @@
       <div class="admin-field"><label>Description courte</label><textarea id="adminDescription"></textarea></div>
       <div class="admin-field"><label>Prix / conditions (texte affiché)</label><input type="text" id="adminPrix" /></div>
       <div class="admin-field"><label>Prix entrée (€) — montant facturé</label><input type="number" id="adminPrixNum" min="0" step="0.01" value="30" /></div>
+      <div class="admin-field"><label>Prix bouteille (€) — supplément si le club la fournit</label><input type="number" id="adminPrixBouteille" min="0" step="0.01" value="20" /></div>
       <button class="admin-save-btn" onclick="saveEvent()">💾 Enregistrer</button>
     </div>
 
     <div class="card">
       <div class="card-title">Inscriptions</div>
-      <div class="counters" style="max-width:100%;">
+      <div class="counters counters-4" style="max-width:100%;">
         <div class="counter-card"><div class="counter-label">Total</div><div class="counter-num total" id="aCTotal">0</div></div>
         <div class="counter-card"><div class="counter-label">Présents</div><div class="counter-num yes" id="aCOui">0</div></div>
         <div class="counter-card"><div class="counter-label">Absents</div><div class="counter-num no" id="aCNon">0</div></div>
+        <div class="counter-card"><div class="counter-label">🍾 Bouteilles</div><div class="counter-num total" id="aCBouteilles">0</div></div>
       </div>
       <div id="adminList" style="margin-top:1rem;"></div>
       <button class="admin-csv-btn" onclick="exportCSV()">📥 Exporter en CSV</button>
@@ -216,6 +237,17 @@
 
     <button class="admin-back-btn" onclick="showPublic()">← Retour au site</button>
     <button class="admin-back-btn" onclick="window.location.href='admin.html'" style="margin-top:0.5rem;">← Retour à l'administration</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="helpModal">
+  <div class="modal-box">
+    <h3>❓ À quoi servent ces options ?</h3>
+    <div class="help-item"><b>Nom et prénom</b><br>Indiquez bien votre nom ET prénom complets : c'est ce qui permet d'identifier à quel membre correspond l'inscription, et donc à quel nom éditer la facture si vous en demandez une.</div>
+    <div class="help-item"><b>📄 Je souhaite recevoir une facture</b><br>Réservé aux membres du club. Une facture officielle vous sera envoyée par mail après validation par le bureau.</div>
+    <div class="help-item"><b>🍾 Le club fournit la bouteille (+20€)</b><br>Si vous cochez cette case, pas besoin d'apporter votre propre bouteille : c'est le club qui la fournit. En échange, 20€ de plus s'ajoutent au montant à régler (sur la facture, ou à ajouter à votre paiement si vous ne demandez pas de facture).</div>
+    <div class="help-item"><b>Commentaire</b><br>Facultatif : précisez par exemple si vous venez accompagné(e), une allergie, ou toute autre information utile à l'organisateur.</div>
+    <button class="modal-close-btn" onclick="hideHelp()">Fermer</button>
   </div>
 </div>
 
@@ -241,6 +273,7 @@
     description: "",
     prix: "⚠️ 30 € PAR PERSONNE + UNE BOUTEILLE",
     prixNum: 30,
+    prixBouteille: 20,
     actif: true
   };
 
@@ -266,6 +299,7 @@
       description: data.description || ev.description,
       prix: data.prix_conditions || ev.prix,
       prixNum: (data.prix_num !== null && data.prix_num !== undefined) ? Number(data.prix_num) : ev.prixNum,
+      prixBouteille: (data.prix_bouteille !== null && data.prix_bouteille !== undefined) ? Number(data.prix_bouteille) : ev.prixBouteille,
       actif: data.inscriptions_ouvertes !== null ? data.inscriptions_ouvertes : ev.actif
     };
   }
@@ -277,6 +311,7 @@
     document.getElementById('evLieu').textContent = ev.lieu;
     document.getElementById('evDescription').textContent = ev.description;
     document.getElementById('evPrix').textContent = ev.prix;
+    document.getElementById('prixBouteilleLabel').textContent = ev.prixBouteille;
     const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(ev.adresse);
     document.getElementById('evLieuPill').href = mapsUrl;
     document.getElementById('inactifBanner').style.display = ev.actif ? 'none' : 'block';
@@ -296,6 +331,9 @@
     document.getElementById('btnOui').classList.toggle('selected', val === true);
     document.getElementById('btnNon').classList.toggle('selected', val === false);
   }
+
+  function showHelp() { document.getElementById('helpModal').classList.add('show'); }
+  function hideHelp() { document.getElementById('helpModal').classList.remove('show'); }
 
   async function envoyerMail(tpl, params) {
     const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
@@ -334,31 +372,39 @@
     }
     btn.disabled = true; btn.textContent = 'Envoi…';
     const veutFacture = document.getElementById('factureInput').checked;
-    const entry = { nom, presence: choice, commentaire: commentaire || null, created_at: new Date().toISOString() };
+    const veutBouteille = document.getElementById('bouteilleInput').checked;
+    const entry = { nom, presence: choice, commentaire: commentaire || null, bouteille: veutBouteille, created_at: new Date().toISOString() };
     const { error } = await sb.from('inscriptions').insert([entry]);
     if (error) { alert('Erreur : ' + error.message); btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; return; }
 
     // ─── Facture à la demande (uniquement si membre et présent) ───
     let factureMsg = '';
     if (veutFacture && choice === true) {
-      factureMsg = await genererFactureEvent(nom);
+      factureMsg = await genererFactureEvent(nom, veutBouteille);
     } else if (veutFacture && choice === false) {
       factureMsg = ' (facture non générée : réponse négative)';
+    }
+
+    let montantMsg = '';
+    if (choice === true) {
+      const totalAmount = (ev.prixNum || 0) + (veutBouteille ? (ev.prixBouteille || 0) : 0);
+      montantMsg = ' Montant à régler : ' + totalAmount + '€' + (veutBouteille ? ' (dont ' + (ev.prixBouteille || 0) + '€ bouteille).' : '.');
     }
 
     await loadParticipants();
     document.getElementById('nomInput').value = '';
     document.getElementById('commentInput').value = '';
     document.getElementById('factureInput').checked = false;
+    document.getElementById('bouteilleInput').checked = false;
     choice = null;
     document.getElementById('btnOui').classList.remove('selected');
     document.getElementById('btnNon').classList.remove('selected');
     btn.disabled = false; btn.textContent = 'Envoyer ma réponse';
-    showToast(entry.presence ? ('🎉 Inscription reçue !' + factureMsg) : '😢 Dommage, à une prochaine fois !');
+    showToast(entry.presence ? ('🎉 Inscription reçue !' + montantMsg + factureMsg) : '😢 Dommage, à une prochaine fois !');
   }
 
   // Cherche le membre par nom complet. Si trouvé : facture en_attente + notif ASSO
-  async function genererFactureEvent(nomComplet) {
+  async function genererFactureEvent(nomComplet, veutBouteille) {
     // Normalise : minuscules, sans accents, tirets→espaces, espaces multiples réduits
     const normaliser = (s) => (s || '')
       .toLowerCase()
@@ -384,14 +430,15 @@
     try {
       const numero = await genererNumeroFacture();
       const titreEvent = ev.titre || 'Événement';
-      const description = 'Inscription événement : ' + titreEvent;
+      const montant = (ev.prixNum || 0) + (veutBouteille ? (ev.prixBouteille || 0) : 0);
+      const description = 'Inscription événement : ' + titreEvent + (veutBouteille ? ' (+ bouteille fournie par le club)' : '');
 
       // ÉTAPE 1 : enregistrer la facture en attente de validation (pas de mail membre)
       await sb.from('factures').insert([{
         numero: numero,
         type: 'evenement',
         membre_nom: (membre.prenom || '') + ' ' + (membre.nom || ''),
-        montant: ev.prixNum || 0,
+        montant: montant,
         statut: 'en_attente',
         description: description
       }]);
@@ -411,6 +458,7 @@
             email:     membre.email || '',
             telephone: membre.telephone || '',
             detail:    'Inscription événement : ' + titreEvent + '\nFacture n° ' + numero +
+                       '\nMontant : ' + montant + '€' + (veutBouteille ? ' (dont ' + (ev.prixBouteille || 0) + '€ bouteille fournie par le club)' : '') +
                        '\n→ À valider dans factures_admin.html après réception du paiement.'
           }
         })
@@ -442,8 +490,9 @@
       const badge = p.presence
         ? '<span class="badge yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Présent</span>'
         : '<span class="badge no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Absent</span>';
+      const bottleIcon = p.bouteille ? '<span class="bottle-icon">🍾</span>' : '';
       const comment = p.commentaire ? '<div class="participant-comment">💬 ' + esc(p.commentaire) + '</div>' : '';
-      return '<div class="participant-item"><div><div class="participant-name">' + esc(p.nom) + '</div><div class="participant-time">' + h + '</div>' + comment + '</div>' + badge + '</div>';
+      return '<div class="participant-item"><div><div class="participant-name">' + bottleIcon + esc(p.nom) + '</div><div class="participant-time">' + h + '</div>' + comment + '</div>' + badge + '</div>';
     }).join('');
   }
 
@@ -501,6 +550,7 @@
     document.getElementById('adminDescription').value = ev.description;
     document.getElementById('adminPrix').value = ev.prix;
     document.getElementById('adminPrixNum').value = ev.prixNum;
+    document.getElementById('adminPrixBouteille').value = ev.prixBouteille;
     document.getElementById('evActif').checked = ev.actif;
   }
   async function saveEvent() {
@@ -513,6 +563,7 @@
       description: document.getElementById('adminDescription').value.trim(),
       prix: document.getElementById('adminPrix').value.trim(),
       prixNum: parseFloat(document.getElementById('adminPrixNum').value) || 0,
+      prixBouteille: parseFloat(document.getElementById('adminPrixBouteille').value) || 0,
       actif: document.getElementById('evActif').checked
     };
     const { error } = await sb.from('parametres').upsert({
@@ -525,6 +576,7 @@
       description: ev.description,
       prix_conditions: ev.prix,
       prix_num: ev.prixNum,
+      prix_bouteille: ev.prixBouteille,
       inscriptions_ouvertes: ev.actif
     });
     if (error) { alert('Erreur sauvegarde : ' + error.message); return; }
@@ -532,8 +584,9 @@
   }
   function renderAdminList() {
     const total = participants.length, oui = participants.filter(p => p.presence).length;
-    const at = document.getElementById('aCTotal'), ao = document.getElementById('aCOui'), an = document.getElementById('aCNon');
-    if (at) at.textContent = total; if (ao) ao.textContent = oui; if (an) an.textContent = total - oui;
+    const bouteilles = participants.filter(p => p.presence && p.bouteille).length;
+    const at = document.getElementById('aCTotal'), ao = document.getElementById('aCOui'), an = document.getElementById('aCNon'), ab = document.getElementById('aCBouteilles');
+    if (at) at.textContent = total; if (ao) ao.textContent = oui; if (an) an.textContent = total - oui; if (ab) ab.textContent = bouteilles;
     const c = document.getElementById('adminList');
     if (!c) return;
     if (total === 0) { c.innerHTML = '<p class="empty-msg" style="padding:1rem 0;">Aucune inscription.</p>'; return; }
@@ -541,8 +594,9 @@
       const badge = p.presence
         ? '<span class="badge yes" style="font-size:10px;padding:3px 8px;">Présent</span>'
         : '<span class="badge no" style="font-size:10px;padding:3px 8px;">Absent</span>';
+      const bottleIcon = p.bouteille ? '<span class="bottle-icon">🍾</span>' : '';
       const comment = p.commentaire ? '<div style="font-size:11px;color:var(--or-light);opacity:0.6;font-style:italic;">💬 ' + esc(p.commentaire) + '</div>' : '';
-      return '<div class="admin-list-item"><div><div style="font-weight:700;">' + esc(p.nom) + '</div>' + comment + '</div>' + badge + '</div>';
+      return '<div class="admin-list-item"><div><div style="font-weight:700;">' + bottleIcon + esc(p.nom) + '</div>' + comment + '</div>' + badge + '</div>';
     }).join('');
   }
   async function resetInscriptions() {
@@ -552,10 +606,10 @@
     await loadParticipants(); showToast('🗑 Inscriptions supprimées');
   }
   function exportCSV() {
-    const header = 'Nom,Présence,Commentaire,Date\n';
+    const header = 'Nom,Présence,Bouteille,Commentaire,Date\n';
     const rows = participants.map(p => {
       const d = new Date(p.created_at).toLocaleString('fr-FR');
-      return '"' + p.nom + '","' + (p.presence ? 'Présent' : 'Absent') + '","' + (p.commentaire || '') + '","' + d + '"';
+      return '"' + p.nom + '","' + (p.presence ? 'Présent' : 'Absent') + '","' + (p.bouteille ? 'Oui' : 'Non') + '","' + (p.commentaire || '') + '","' + d + '"';
     }).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
