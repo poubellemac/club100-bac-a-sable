@@ -394,6 +394,7 @@ function afficherListe(liste) {
         </div>
         <div style="flex:1;min-width:0;">
           <div class="facture-nom">${nom}</div>
+          ${f.nom_facturation ? `<div style="font-size:11px;color:#89b4f8;opacity:0.85;">🏢 ${f.nom_facturation}</div>` : ``}
           <div class="facture-desc" title="${desc}">${desc}</div>
           ${commentAnnul}
         </div>
@@ -436,6 +437,10 @@ async function validerFacture(id) {
   const { error } = await sb.from("factures").update({ statut: "paye" }).eq("id", id);
   if (error) { alert("Erreur Supabase : " + error.message); return; }
 
+  // 1bis. Nom / adresse de facturation (entreprise) : ils remplacent ceux du membre.
+  const nomFactu = (f.nom_facturation && f.nom_facturation.trim()) ? f.nom_facturation.trim() : "";
+  const adrFactu = (f.adresse_facturation && f.adresse_facturation.trim()) ? f.adresse_facturation.trim() : "";
+
   // 2. Envoyer la facture au membre (template_ic5fplw)
   try {
     const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
@@ -447,9 +452,10 @@ async function validerFacture(id) {
         user_id:     "x9cMeFn-4R6EbOHdS",
         template_params: {
           to_email:       membre.email,
-          prenom:         membre.prenom || "",
-          nom:            membre.nom || "",
-          adresse:        membre.adresse || "",
+          prenom:         nomFactu || (membre.prenom || ""),
+          nom:            nomFactu ? "" : (membre.nom || ""),
+          destinataire:   nomFactu || ((membre.prenom || "") + " " + (membre.nom || "")),
+          adresse:        adrFactu || membre.adresse || "",
           titre:          "Facture — " + (TYPE_LABELS[f.type] || "Club 100 Reims"),
           contenu:        "Votre paiement a bien été reçu. Veuillez trouver votre facture ci-dessous.",
           description:    f.description || "",

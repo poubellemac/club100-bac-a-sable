@@ -273,8 +273,16 @@ function afficherFacture(f) {
   if (f.statut === "annulee") { statutLabel = "annulée"; badgeCls = "statut-annulee"; }
 
   const emailMembre = f.email || (membreCourant ? membreCourant.email : "—") || "—";
-  const adresseMembre = f.adresse || (membreCourant ? (membreCourant.adresse || "") : "");
-  const nomMembre = f.membre_nom || "—";
+  const adresseReelle = f.adresse || (membreCourant ? (membreCourant.adresse || "") : "");
+  // Nom / adresse de facturation (entreprise) : s'ils sont renseignes, ils remplacent
+  // le nom et l'adresse du membre sur la facture.
+  const nomFactu = (f.nom_facturation && f.nom_facturation.trim()) ? f.nom_facturation.trim() : "";
+  const adrFactu = (f.adresse_facturation && f.adresse_facturation.trim()) ? f.adresse_facturation.trim() : "";
+  const adresseMembre = adrFactu || adresseReelle;
+  const nomMembre = nomFactu || f.membre_nom || "—";
+  const ligneMembre = nomFactu
+    ? `<div style="font-size:11px;color:#888;margin-top:6px;">Au titre de l'adhésion de ${f.membre_nom}</div>`
+    : "";
 
   const blocAnnulation = (f.statut === "annulee")
     ? `<div class="fact-annulation"><strong>🚫 Facture annulée.</strong><br>Motif : ${f.commentaire_annulation || "non renseigné"}</div>`
@@ -310,6 +318,7 @@ function afficherFacture(f) {
         ${adresseMembre ? adresseMembre + "<br>" : ""}
         ${emailMembre !== "—" ? emailMembre : ""}
       </div>
+      ${ligneMembre}
     </div>
 
     <!-- TABLEAU PRESTATION -->
@@ -410,6 +419,8 @@ async function envoyerParMail() {
   const nomParts = (f.membre_nom || "").split(" ");
   const prenom = membreCourant.prenom || nomParts[0] || "";
   const nom = membreCourant.nom || nomParts.slice(1).join(" ") || "";
+  const nomFactuM = (f.nom_facturation && f.nom_facturation.trim()) ? f.nom_facturation.trim() : "";
+  const adrFactuM = (f.adresse_facturation && f.adresse_facturation.trim()) ? f.adresse_facturation.trim() : "";
 
   // Lien vers cette page
   const lienFacture = window.location.origin + window.location.pathname + "?id=" + f.id;
@@ -424,9 +435,10 @@ async function envoyerParMail() {
         user_id:     EJS_PUBLIC,
         template_params: {
           to_email:       membreCourant.email,
-          prenom:         prenom,
-          nom:            nom,
-          adresse:        membreCourant.adresse || "",
+          prenom:         nomFactuM || prenom,
+          nom:            nomFactuM ? "" : nom,
+          destinataire:   nomFactuM || (prenom + " " + nom),
+          adresse:        adrFactuM || membreCourant.adresse || "",
           titre:          type,
           contenu:        "Veuillez trouver ci-dessous votre facture. Vous pouvez également la consulter en ligne via le lien : " + lienFacture,
           description:    f.description || type,

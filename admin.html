@@ -263,7 +263,8 @@
 <div class="section-label" style="margin-top:1.5rem">Actions en attente</div>
 <div class="attente-card">
   <div id="facturesAttenteList"></div>
-  <div id="attenteList"><div class="empty-msg">Chargement…</div></div>
+  <div id="attenteList"></div>
+  <div id="attenteVideMsg" class="empty-msg">Chargement…</div>
 </div>
 
 <script>
@@ -272,6 +273,7 @@ const SUPABASE_KEY = "sb_publishable_0WjSlf9O9NTAmjeN9B-SEA_0o2Q5mD3";
 const EJS_PUBLIC   = "x9cMeFn-4R6EbOHdS";
 const EJS_SERVICE  = "service_eh2k91k";
 let sb, user, triCourant = 'date-asc', membresAttente = [];
+let chargeFactures = false, chargeMembres = false;
 
 window.addEventListener('DOMContentLoaded', async () => {
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -289,6 +291,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 async function loadFacturesAttente() {
   const { data } = await sb.from('factures').select('*').eq('statut','en_attente').order('created_at', {ascending: true});
+  chargeFactures = true;
   afficherFacturesAttente(data || []);
   checkVide();
 }
@@ -341,6 +344,11 @@ async function validerFacture(id) {
     }
   }
 
+  // 3bis. Nom / adresse de facturation (entreprise) : ils remplacent le nom et
+  //       l'adresse du membre sur la facture envoyee, s'ils sont renseignes.
+  const nomFactu = (fact.nom_facturation && fact.nom_facturation.trim()) ? fact.nom_facturation.trim() : '';
+  const adrFactu = (fact.adresse_facturation && fact.adresse_facturation.trim()) ? fact.adresse_facturation.trim() : '';
+
   // 4. Envoyer mail membre si email trouvé
   if (emailMembre) {
     try {
@@ -353,9 +361,10 @@ async function validerFacture(id) {
           user_id: EJS_PUBLIC,
           template_params: {
             to_email: emailMembre,
-            prenom: prenomMembre,
-            nom: nomMembre,
-            adresse: adresseMembre,
+            prenom: nomFactu || prenomMembre,
+            nom: nomFactu ? '' : nomMembre,
+            destinataire: nomFactu || (prenomMembre + ' ' + nomMembre),
+            adresse: adrFactu || adresseMembre,
             titre: "Facture — " + fact.type,
             contenu: "Votre commande a été validée par le Club 100 Reims.",
             description: fact.description || fact.type,
@@ -371,10 +380,8 @@ async function validerFacture(id) {
 
   // 5. Retirer de l'affichage
   document.getElementById('fact-row-' + id)?.remove();
-  const list = document.getElementById('facturesAttenteList');
-  if (!list.querySelector('.membre-row')) {
-    list.innerHTML = '<div class="empty-msg">Aucune commande en attente ✓</div>';
-  }
+  checkVide();
+  loadStats();
 
   alert("✓ Commande validée — Facture " + fact.numero + (emailMembre ? " — Mail envoyé à " + emailMembre : " — Email membre introuvable"));
 }
@@ -384,10 +391,8 @@ async function supprimerFacture(id) {
   const { error } = await sb.from('factures').delete().eq('id', id);
   if (error) { alert("Erreur : " + error.message); return; }
   document.getElementById('fact-row-' + id)?.remove();
-  const list = document.getElementById('facturesAttenteList');
-  if (!list.querySelector('.membre-row')) {
-    list.innerHTML = '<div class="empty-msg">Aucune commande en attente ✓</div>';
-  }
+  checkVide();
+  loadStats();
 }
 
 
@@ -402,6 +407,7 @@ async function loadStats() {
 async function loadAttente() {
   const { data } = await sb.from('membres').select('*').eq('role','membre').eq('statut','en_attente');
   membresAttente = data || [];
+  chargeMembres = true;
   afficherAttente();
 }
 
@@ -422,14 +428,22 @@ function afficherAttente() {
   checkVide();
 }
 
+// Le message "Aucune action en attente" a maintenant sa propre div (attenteVideMsg).
+// Il ne s'affiche QUE si les deux listes sont chargees ET vides : plus de message
+// affiche a tort quand une liste repond avant l'autre.
 function checkVide() {
   const f = document.getElementById('facturesAttenteList');
   const m = document.getElementById('attenteList');
-  const aucune = !f.querySelector('.membre-row') && !m.querySelector('.membre-row');
-  if (aucune) {
-    f.innerHTML = '<div class="empty-msg">Aucune action en attente ✓</div>';
-    m.innerHTML = '';
+  const vide = document.getElementById('attenteVideMsg');
+  if (!vide) return;
+  if (!chargeFactures || !chargeMembres) {
+    vide.textContent = 'Chargement…';
+    vide.style.display = 'block';
+    return;
   }
+  const aucune = !f.querySelector('.membre-row') && !m.querySelector('.membre-row');
+  vide.textContent = 'Aucune action en attente ✓';
+  vide.style.display = aucune ? 'block' : 'none';
 }
 
 // Génère un numéro de facture unique. Réessaie en cas de collision
@@ -487,6 +501,7 @@ async function validerMembre(id) {
     type: 'cotisation',
     membre_nom: membre.prenom + ' ' + membre.nom,
     nom_facturation: (membre.nom_facturation && membre.nom_facturation.trim()) ? membre.nom_facturation.trim() : null,
+    adresse_facturation: (membre.adresse_facturation && membre.adresse_facturation.trim()) ? membre.adresse_facturation.trim() : null,
     montant: parseFloat(membre.type_cotisation),
     statut: 'paye',
     description: 'Cotisation Club 100 Reims — ' + membre.type_cotisation + '€',
@@ -498,6 +513,9 @@ async function validerMembre(id) {
   }
 
   // 3. Envoyer mail au membre
+  //    Le nom / l'adresse de facturation (entreprise) remplacent ceux du membre s'ils existent.
+  const nomFactuM = (membre.nom_facturation && membre.nom_facturation.trim()) ? membre.nom_facturation.trim() : '';
+  const adrFactuM = (membre.adresse_facturation && membre.adresse_facturation.trim()) ? membre.adresse_facturation.trim() : '';
   if (numero) {
     try {
       await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -509,9 +527,10 @@ async function validerMembre(id) {
           user_id: EJS_PUBLIC,
           template_params: {
             to_email: membre.email,
-            prenom: membre.prenom,
-            nom: membre.nom,
-            adresse: membre.adresse || '',
+            prenom: nomFactuM || membre.prenom,
+            nom: nomFactuM ? '' : membre.nom,
+            destinataire: nomFactuM || (membre.prenom + ' ' + membre.nom),
+            adresse: adrFactuM || membre.adresse || '',
             titre: "Facture — Cotisation 2026",
             contenu: "Votre adhésion au Club 100 Reims a été validée. Votre compte est maintenant actif.",
             description: "Cotisation annuelle 2026 — Club 100 Reims",
