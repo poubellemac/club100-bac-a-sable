@@ -99,6 +99,7 @@
   }
   .badge-live { background: rgba(46,107,62,0.2); color: #4CAF50; border: 1px solid rgba(46,107,62,0.3); }
   .badge-test { background: rgba(201,168,76,0.12); color: var(--or); border: 1px solid var(--border); }
+  .badge-closed { background: rgba(139,26,26,0.15); color: var(--red); border: 1px solid rgba(139,26,26,0.4); }
   .badge-todo { background: rgba(68,68,68,0.3); color: var(--gris-mid); border: 1px solid rgba(68,68,68,0.4); }
 
   /* MEMBRES EN ATTENTE */
@@ -203,7 +204,7 @@
 
 
   <a class="tuile" href="inscriptions_event.html?admin=1">
-    <span class="tuile-badge badge-live">Live</span>
+    <span class="tuile-badge badge-live" id="badgeEvent">Live</span>
     <div class="tuile-icon">🗓</div>
     <div class="tuile-nom">Gestion événement</div>
     <div class="tuile-desc">Config, inscrits, export CSV</div>
@@ -287,7 +288,26 @@ window.addEventListener('DOMContentLoaded', async () => {
   loadStats();
   loadAttente();
   loadFacturesAttente();
+  loadBadgeEvent();
 });
+
+// Reflète l'état réel des inscriptions événement (parametres.inscriptions_ouvertes)
+// sur la tuile "Gestion événement" : Live si ouvertes, Close si fermées.
+async function loadBadgeEvent() {
+  const badge = document.getElementById('badgeEvent');
+  if (!badge) return;
+  const { data, error } = await sb.from('parametres').select('inscriptions_ouvertes').eq('id', 1).single();
+  if (error || !data) return;
+  if (data.inscriptions_ouvertes === false) {
+    badge.textContent = 'Close';
+    badge.classList.remove('badge-live');
+    badge.classList.add('badge-closed');
+  } else {
+    badge.textContent = 'Live';
+    badge.classList.remove('badge-closed');
+    badge.classList.add('badge-live');
+  }
+}
 
 async function loadFacturesAttente() {
   const { data } = await sb.from('factures').select('*').eq('statut','en_attente').order('created_at', {ascending: true});
