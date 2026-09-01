@@ -135,7 +135,7 @@
     <div class="divider"></div>
     <div class="card">
       <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>Votre réservation</span>
+        <span>Votre réservation <span style="font-size:10px;color:var(--or-light);opacity:0.6;font-style:italic;text-transform:none;letter-spacing:0;">(1 inscription par personne)</span></span>
         <span class="help-btn" onclick="showHelp()" title="Aide">?</span>
       </div>
       <label for="nomInput">Votre nom et prénom</label>
@@ -230,7 +230,12 @@
         <div class="counter-card"><div class="counter-label">Absents</div><div class="counter-num no" id="aCNon">0</div></div>
         <div class="counter-card"><div class="counter-label">🍾 Bouteilles</div><div class="counter-num total" id="aCBouteilles">0</div></div>
       </div>
-      <div id="adminList" style="margin-top:1rem;"></div>
+      <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;">
+        <button class="admin-back-btn" style="margin-top:0;flex:1;padding:8px;font-size:12px;" onclick="toggleAdminSort('nom')" id="sortBtnNom">Nom <span id="sortArrowNom"></span></button>
+        <button class="admin-back-btn" style="margin-top:0;flex:1;padding:8px;font-size:12px;" onclick="toggleAdminSort('heure')" id="sortBtnHeure">Heure <span id="sortArrowHeure"></span></button>
+        <button class="admin-back-btn" style="margin-top:0;flex:1;padding:8px;font-size:12px;" onclick="toggleAdminSort('bouteille')" id="sortBtnBouteille">🍾 <span id="sortArrowBouteille"></span></button>
+      </div>
+      <div id="adminList" style="margin-top:0.75rem;"></div>
       <button class="admin-csv-btn" onclick="exportCSV()">📥 Exporter en CSV</button>
       <button class="admin-danger-btn" onclick="resetInscriptions()">🗑 Réinitialiser les inscriptions</button>
     </div>
@@ -613,6 +618,42 @@
     if (error) { alert('Erreur sauvegarde : ' + error.message); return; }
     applyEvent(); showToast('✅ Événement enregistré !');
   }
+  // Tri de la liste admin : null = ordre par défaut (date d'inscription, plus récent en premier).
+  // Chaque clic sur un en-tête bascule le sens (▲/▼). Bouteille : 1er clic = avec bouteille d'abord.
+  let adminSortKey = null, adminSortDir = 1;
+
+  function toggleAdminSort(key) {
+    if (adminSortKey === key) {
+      adminSortDir *= -1;
+    } else {
+      adminSortKey = key;
+      adminSortDir = (key === 'bouteille' || key === 'heure') ? -1 : 1;
+    }
+    updateSortArrows();
+    renderAdminList();
+  }
+
+  function updateSortArrows() {
+    ['Nom', 'Heure', 'Bouteille'].forEach(function(label) {
+      const el = document.getElementById('sortArrow' + label);
+      if (!el) return;
+      const key = label.toLowerCase();
+      el.textContent = (adminSortKey === key) ? (adminSortDir === 1 ? '▲' : '▼') : '';
+    });
+  }
+
+  function getSortedParticipants() {
+    const list = participants.slice();
+    if (adminSortKey === 'nom') {
+      list.sort((a, b) => adminSortDir * a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }));
+    } else if (adminSortKey === 'heure') {
+      list.sort((a, b) => adminSortDir * (new Date(a.created_at) - new Date(b.created_at)));
+    } else if (adminSortKey === 'bouteille') {
+      list.sort((a, b) => adminSortDir * ((a.bouteille ? 1 : 0) - (b.bouteille ? 1 : 0)));
+    }
+    return list;
+  }
+
   function renderAdminList() {
     const total = participants.length, oui = participants.filter(p => p.presence).length;
     const bouteilles = participants.filter(p => p.presence && p.bouteille).length;
@@ -621,7 +662,7 @@
     const c = document.getElementById('adminList');
     if (!c) return;
     if (total === 0) { c.innerHTML = '<p class="empty-msg" style="padding:1rem 0;">Aucune inscription.</p>'; return; }
-    c.innerHTML = participants.map(p => {
+    c.innerHTML = getSortedParticipants().map(p => {
       const badge = p.presence
         ? '<span class="badge yes" style="font-size:10px;padding:3px 8px;">Présent</span>'
         : '<span class="badge no" style="font-size:10px;padding:3px 8px;">Absent</span>';
