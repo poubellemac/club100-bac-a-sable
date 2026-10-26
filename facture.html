@@ -359,7 +359,7 @@
 
 <header>
   <h1>Club 100 Reims en Champagne</h1>
-  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.4</span></p>
+  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.5</span></p>
 </header>
 
 <nav>
@@ -380,7 +380,7 @@
   <!-- Membre -->
   <div class="card">
     <div class="card-title">👤 Informations membre</div>
-    <label>Adresse mail * <span id="info-preremplir" style="font-weight:400;text-transform:none;letter-spacing:0;color:#6fbf73;margin-left:6px;"></span></label>
+    <label>Adresse mail * <span id="info-preremplir" style="font-weight:400;text-transform:none;letter-spacing:0;color:#888;margin-left:6px;">(pré-remplissage auto si membre connu)</span></label>
     <input type="email" id="mail" placeholder="jean.dupont@mail.com" onchange="preremplirMembre()">
     <label>Nom de la société * <span style="font-weight:400;color:#888;">(ou Prénom + Nom)</span></label>
     <input type="text" id="societe" placeholder="Si facture au nom d'une entreprise">
@@ -970,7 +970,7 @@ function resetForm() {
   ['prenom','nom','societe','mail','adresse','description','ref-interne'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  document.getElementById('info-preremplir').textContent = '';
+  infoPreremplir("(pré-remplissage auto si membre connu)", "#888");
   document.getElementById('montant').value = '';
   document.getElementById('montant-display').textContent = '0,00 €';
   document.getElementById('type').selectedIndex = 0;
@@ -1197,25 +1197,29 @@ function nomFichier(d) {
 
 // Pré-remplissage : si le mail correspond à un membre, on remplit
 // uniquement les champs encore vides (on n'écrase jamais une saisie).
+function infoPreremplir(txt, couleur) {
+  const el = document.getElementById('info-preremplir');
+  el.textContent = txt; el.style.color = couleur;
+}
+
 async function preremplirMembre() {
-  const info = document.getElementById('info-preremplir');
   const mail = document.getElementById('mail').value.trim();
-  info.textContent = '';
-  if (!mail || !mail.includes('@')) return;
+  if (!mail || !mail.includes('@')) return infoPreremplir("(pré-remplissage auto si membre connu)", "#888");
+  infoPreremplir("(recherche…)", "#888");
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/membres?email=ilike.${encodeURIComponent(mail)}&select=prenom,nom,adresse,nom_facturation,adresse_facturation&limit=1`,
       { headers: supaHeaders() }
     );
     const data = await res.json();
-    if (!Array.isArray(data) || !data.length) { info.textContent = "Mail inconnu dans les membres — saisie manuelle"; return; }
+    if (!Array.isArray(data) || !data.length) { infoPreremplir("(mail inconnu — saisie manuelle)", "#e0a050"); return; }
     const m = data[0];
     const remplir = (id, val) => { const el = document.getElementById(id); if (val && !el.value.trim()) el.value = val; };
     remplir('prenom', m.prenom);
     remplir('nom', m.nom);
     remplir('societe', m.nom_facturation);
     remplir('adresse', m.adresse_facturation || m.adresse);
-    info.textContent = "✓ Infos du membre pré-remplies" + (m.nom_facturation ? " (société : " + m.nom_facturation + ")" : "");
+    infoPreremplir("(✓ Infos du membre pré-remplies" + (m.nom_facturation ? " — société : " + m.nom_facturation : "") + ")", "#6fbf73");
   } catch(e) {
     console.error('Pré-remplissage membre:', e);
   }
