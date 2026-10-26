@@ -202,7 +202,7 @@
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
   <div class="admin-section">
-    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.5</span></div>
+    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.6</span></div>
 
     <div class="card">
       <div class="card-title">Événement en cours</div>
@@ -476,7 +476,9 @@
         membre_nom: (membre.prenom || '') + ' ' + (membre.nom || ''),
         montant: montant,
         statut: 'en_attente',
-        description: description
+        description: description,
+        nom_facturation: (membre.nom_facturation || '').trim() || null,
+        adresse_facturation: (membre.adresse_facturation || '').trim() || null
       }]);
 
       // ÉTAPE 1 : notifier l'ASSO (admin) qu'une facture est à valider
