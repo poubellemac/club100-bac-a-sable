@@ -359,7 +359,7 @@
 
 <header>
   <h1>Club 100 Reims en Champagne</h1>
-  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.3</span></p>
+  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.4</span></p>
 </header>
 
 <nav>
@@ -380,18 +380,16 @@
   <!-- Membre -->
   <div class="card">
     <div class="card-title">👤 Informations membre</div>
-    <label>Adresse mail *</label>
+    <label>Adresse mail * <span id="info-preremplir" style="font-weight:400;text-transform:none;letter-spacing:0;color:#6fbf73;margin-left:6px;"></span></label>
     <input type="email" id="mail" placeholder="jean.dupont@mail.com" onchange="preremplirMembre()">
-    <div id="info-preremplir" style="font-size:11px;color:#888;margin:-6px 0 10px;"></div>
-    <label>Prénom</label>
-    <input type="text" id="prenom" placeholder="Ex : Jean">
-    <label>Nom</label>
-    <input type="text" id="nom" placeholder="Ex : DUPONT">
-    <label>Nom de la société</label>
+    <label>Nom de la société * <span style="font-weight:400;color:#888;">(ou Prénom + Nom)</span></label>
     <input type="text" id="societe" placeholder="Si facture au nom d'une entreprise">
-    <div style="font-size:11px;color:#888;margin:-6px 0 10px;">* Prénom + nom OU nom de la société obligatoire</div>
-    <label>Adresse de facturation</label>
+    <label>Adresse de facturation *</label>
     <input type="text" id="adresse" placeholder="12 rue de la Paix, 51100 Reims">
+    <label>Prénom <span style="font-weight:400;color:#888;">(optionnel si société)</span></label>
+    <input type="text" id="prenom" placeholder="Ex : Jean">
+    <label>Nom <span style="font-weight:400;color:#888;">(optionnel si société)</span></label>
+    <input type="text" id="nom" placeholder="Ex : DUPONT">
   </div>
 
   <!-- Prestation -->
@@ -660,6 +658,7 @@ function confirmerFacture() {
   const societe = document.getElementById('societe').value.trim();
   if (!societe && (!prenom || !nom)) return toast("⚠ Prénom + nom, ou nom de la société, obligatoire", 'error');
   if (!mail || !mail.includes('@')) return toast('⚠ Adresse mail invalide', 'error');
+  if (!document.getElementById('adresse').value.trim()) return toast("⚠ Adresse de facturation obligatoire", 'error');
   if (!description) return toast('⚠ Description obligatoire', 'error');
   if (!montant || montant <= 0) return toast('⚠ Montant invalide', 'error');
   if (!date) return toast('⚠ Date obligatoire', 'error');
