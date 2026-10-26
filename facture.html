@@ -359,7 +359,7 @@
 
 <header>
   <h1>Club 100 Reims en Champagne</h1>
-  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.2</span></p>
+  <p>Gestion des factures <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;margin-left:6px;">v1.3</span></p>
 </header>
 
 <nav>
@@ -380,13 +380,17 @@
   <!-- Membre -->
   <div class="card">
     <div class="card-title">👤 Informations membre</div>
-    <label>Prénom *</label>
-    <input type="text" id="prenom" placeholder="Ex : Jean">
-    <label>Nom *</label>
-    <input type="text" id="nom" placeholder="Ex : DUPONT">
     <label>Adresse mail *</label>
-    <input type="email" id="mail" placeholder="jean.dupont@mail.com">
-    <label>Adresse postale</label>
+    <input type="email" id="mail" placeholder="jean.dupont@mail.com" onchange="preremplirMembre()">
+    <div id="info-preremplir" style="font-size:11px;color:#888;margin:-6px 0 10px;"></div>
+    <label>Prénom</label>
+    <input type="text" id="prenom" placeholder="Ex : Jean">
+    <label>Nom</label>
+    <input type="text" id="nom" placeholder="Ex : DUPONT">
+    <label>Nom de la société</label>
+    <input type="text" id="societe" placeholder="Si facture au nom d'une entreprise">
+    <div style="font-size:11px;color:#888;margin:-6px 0 10px;">* Prénom + nom OU nom de la société obligatoire</div>
+    <label>Adresse de facturation</label>
     <input type="text" id="adresse" placeholder="12 rue de la Paix, 51100 Reims">
   </div>
 
@@ -653,7 +657,8 @@ function confirmerFacture() {
   const montant = parseFloat(document.getElementById('montant').value);
   const date = document.getElementById('date-prestation').value;
 
-  if (!prenom || !nom) return toast('⚠ Prénom et nom obligatoires', 'error');
+  const societe = document.getElementById('societe').value.trim();
+  if (!societe && (!prenom || !nom)) return toast("⚠ Prénom + nom, ou nom de la société, obligatoire", 'error');
   if (!mail || !mail.includes('@')) return toast('⚠ Adresse mail invalide', 'error');
   if (!description) return toast('⚠ Description obligatoire', 'error');
   if (!montant || montant <= 0) return toast('⚠ Montant invalide', 'error');
@@ -661,7 +666,7 @@ function confirmerFacture() {
 
   currentFactureData = {
     numero:      prochainNumero,
-    prenom, nom, mail,
+    prenom, nom, mail, societe,
     adresse:     document.getElementById('adresse').value.trim(),
     type:        document.getElementById('type').value,
     description,
@@ -675,7 +680,8 @@ function confirmerFacture() {
   const d = currentFactureData;
   document.getElementById('modal-recap').innerHTML = `
     <strong>Facture n°</strong> ${d.numero}<br>
-    <strong>Membre</strong> ${d.prenom} ${d.nom}<br>
+    <strong>Facturé à</strong> ${nomTitulaire(d)}<br>
+    ${d.societe && (d.prenom || d.nom) ? `<strong>Contact</strong> ${d.prenom} ${d.nom}<br>` : ''}
     <strong>Mail</strong> ${d.mail}<br>
     <strong>Prestation</strong> ${typeLabels[d.type]}<br>
     <strong>Description</strong> ${d.description}<br>
@@ -749,7 +755,7 @@ function genererPDF(d) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(10, 10, 10);
-  doc.text(`${d.prenom} ${d.nom.toUpperCase()}`, M+6, y+14);
+  doc.text(nomTitulaire(d), M+6, y+14);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(80, 80, 80);
@@ -886,7 +892,9 @@ async function validerEtGenerer() {
         body: JSON.stringify({
           numero:      numeroFinal,
           type:        d.type || 'invite',
-          membre_nom:  d.prenom + ' ' + d.nom,
+          membre_nom:  ((d.prenom || '') + ' ' + (d.nom || '')).trim() || d.societe,
+          nom_facturation:     d.societe || null,
+          adresse_facturation: (d.societe && d.adresse) ? d.adresse : null,
           montant:     d.montant,
           statut:      'paye',
           description: d.description,
@@ -928,8 +936,9 @@ async function validerEtGenerer() {
         user_id: EJS_PUB,
         template_params: {
           to_email:       d.mail,
-          prenom:         d.prenom,
-          nom:            d.nom,
+          prenom:         d.societe || d.prenom,
+          nom:            d.societe ? '' : d.nom,
+          destinataire:   nomTitulaire(d),
           adresse:        d.adresse || '',
           titre:          typeLabels[d.type] || 'Facture',
           contenu:        "Votre facture a ete enregistree par le Club 100 Reims.",
@@ -959,9 +968,10 @@ async function validerEtGenerer() {
 }
 
 function resetForm() {
-  ['prenom','nom','mail','adresse','description','ref-interne'].forEach(id => {
+  ['prenom','nom','societe','mail','adresse','description','ref-interne'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  document.getElementById('info-preremplir').textContent = '';
   document.getElementById('montant').value = '';
   document.getElementById('montant-display').textContent = '0,00 €';
   document.getElementById('type').selectedIndex = 0;
@@ -1038,6 +1048,9 @@ function filtrerFactures() {
     (f.nom||'').toLowerCase().includes(search) ||
     (f.prenom||'').toLowerCase().includes(search) ||
     (f.mail||'').toLowerCase().includes(search) ||
+    (f.membre_nom||'').toLowerCase().includes(search) ||
+    (f.nom_facturation||'').toLowerCase().includes(search) ||
+    (f.email||'').toLowerCase().includes(search) ||
     (f.numero||'').toLowerCase().includes(search) ||
     (f.description||'').toLowerCase().includes(search)
   );
@@ -1049,7 +1062,7 @@ function filtrerFactures() {
     if (tri === 'asc')          return (a.date_emission||'') > (b.date_emission||'') ? 1 : -1;
     if (tri === 'montant_desc') return parseFloat(b.montant) - parseFloat(a.montant);
     if (tri === 'montant_asc')  return parseFloat(a.montant) - parseFloat(b.montant);
-    if (tri === 'nom')          return (a.nom||'').localeCompare(b.nom||'');
+    if (tri === 'nom')          return (a.nom_facturation||a.membre_nom||a.nom||'').localeCompare(b.nom_facturation||b.membre_nom||b.nom||'', 'fr');
     return (b.date_emission||'') > (a.date_emission||'') ? 1 : -1; // desc par défaut
   });
 
@@ -1096,8 +1109,9 @@ function afficherFactures(data) {
           </div>
           <div class="fi-montant">${parseFloat(f.montant||0).toLocaleString('fr-FR',{minimumFractionDigits:2})} €</div>
         </div>
-        <div class="fi-nom">${f.prenom||''} ${(f.nom||'').toUpperCase()}</div>
-        <div class="fi-desc" style="margin-top:2px;">${f.mail||''}</div>
+        <div class="fi-nom">${f.nom_facturation ? '🏢 ' + f.nom_facturation : (f.membre_nom || ((f.prenom||'') + ' ' + (f.nom||'').toUpperCase()))}</div>
+        ${f.nom_facturation && f.membre_nom && f.membre_nom !== f.nom_facturation ? `<div class="fi-desc">${f.membre_nom}</div>` : ''}
+        <div class="fi-desc" style="margin-top:2px;">${f.email||f.mail||''}</div>
         <div class="fi-desc">${f.description||''}</div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;">
           <span class="badge-type">${typeLabels[f.type_prestation]||f.type_prestation||''}</span>
@@ -1117,10 +1131,11 @@ function afficherFactures(data) {
 function regenererPDF(f) {
   const d = {
     numero:          f.numero,
-    prenom:          f.prenom,
-    nom:             f.nom,
-    mail:            f.mail,
-    adresse:         f.adresse || '',
+    prenom:          f.prenom || (f.nom_facturation ? '' : (f.membre_nom || '')),
+    nom:             f.nom || '',
+    societe:         f.nom_facturation || '',
+    mail:            f.mail || f.email || '',
+    adresse:         f.adresse_facturation || f.adresse || '',
     type:            f.type_prestation,
     description:     f.description,
     date_prestation: f.date_prestation,
@@ -1130,7 +1145,7 @@ function regenererPDF(f) {
     date_emission:   f.date_emission
   };
   const doc = genererPDF(d);
-  doc.save(`Facture_${d.numero}_${d.nom}.pdf`);
+  doc.save(`Facture_${d.numero}_${nomFichier(d)}.pdf`);
   toast('✓ PDF retéléchargé', 'success');
 }
 
@@ -1170,6 +1185,41 @@ function supaHeaders() {
     'apikey': SUPABASE_KEY,
     'Authorization': `Bearer ${SUPABASE_KEY}`
   };
+}
+
+// Nom affiché comme titulaire : la société si renseignée, sinon Prénom NOM
+function nomTitulaire(d) {
+  if (d.societe) return d.societe;
+  return ((d.prenom || '') + ' ' + (d.nom || '').toUpperCase()).trim();
+}
+function nomFichier(d) {
+  return (d.societe || d.nom || d.prenom || 'client').replace(/[^\wÀ-ÿ-]+/g, '_');
+}
+
+// Pré-remplissage : si le mail correspond à un membre, on remplit
+// uniquement les champs encore vides (on n'écrase jamais une saisie).
+async function preremplirMembre() {
+  const info = document.getElementById('info-preremplir');
+  const mail = document.getElementById('mail').value.trim();
+  info.textContent = '';
+  if (!mail || !mail.includes('@')) return;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/membres?email=ilike.${encodeURIComponent(mail)}&select=prenom,nom,adresse,nom_facturation,adresse_facturation&limit=1`,
+      { headers: supaHeaders() }
+    );
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) { info.textContent = "Mail inconnu dans les membres — saisie manuelle"; return; }
+    const m = data[0];
+    const remplir = (id, val) => { const el = document.getElementById(id); if (val && !el.value.trim()) el.value = val; };
+    remplir('prenom', m.prenom);
+    remplir('nom', m.nom);
+    remplir('societe', m.nom_facturation);
+    remplir('adresse', m.adresse_facturation || m.adresse);
+    info.textContent = "✓ Infos du membre pré-remplies" + (m.nom_facturation ? " (société : " + m.nom_facturation + ")" : "");
+  } catch(e) {
+    console.error('Pré-remplissage membre:', e);
+  }
 }
 
 function formatDate(str) {
