@@ -202,7 +202,7 @@
 <!-- ===== ADMIN ===== -->
 <div id="adminPanel">
   <div class="admin-section">
-    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.6</span></div>
+    <div class="admin-header">⚙ Administration <span style="background:var(--or);color:#fff;padding:2px 8px;border-radius:6px;font-size:13px;font-weight:700;">v1.7</span></div>
 
     <div class="card">
       <div class="card-title">Événement en cours</div>
@@ -421,18 +421,33 @@
     const { error } = await sb.from('inscriptions').insert([entry]);
     if (error) { alert('Erreur : ' + error.message); btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; return; }
 
-    // ─── Facture à la demande (uniquement si membre et présent) ───
+    // ─── Membre à 150 € (actif) : repas inclus, seule la bouteille est due ───
+    let membre = null;
+    if (choice === true) membre = await trouverMembre(nom);
+    const repasInclus = !!(membre && String(membre.type_cotisation) === '150' && membre.statut === 'actif');
+    const prixRepas = repasInclus ? 0 : (ev.prixNum || 0);
+    const prixBout  = veutBouteille ? (ev.prixBouteille || 0) : 0;
+    const totalAmount = prixRepas + prixBout;
+
+    // ─── Facture à la demande (uniquement si membre, présent, et montant > 0) ───
     let factureMsg = '';
     if (veutFacture && choice === true) {
-      factureMsg = await genererFactureEvent(nom, veutBouteille);
+      if (totalAmount <= 0) {
+        factureMsg = ' (pas de facture : repas inclus dans votre cotisation 150 €)';
+      } else {
+        factureMsg = await genererFactureEvent(membre, veutBouteille, repasInclus, totalAmount);
+      }
     } else if (veutFacture && choice === false) {
       factureMsg = ' (facture non générée : réponse négative)';
     }
 
     let montantMsg = '';
     if (choice === true) {
-      const totalAmount = (ev.prixNum || 0) + (veutBouteille ? (ev.prixBouteille || 0) : 0);
-      montantMsg = ' Montant à régler : ' + totalAmount + '€' + (veutBouteille ? ' (dont ' + (ev.prixBouteille || 0) + '€ bouteille).' : '.');
+      if (repasInclus) {
+        montantMsg = ' ✓ Repas inclus dans votre cotisation.' + (prixBout > 0 ? ' Montant à régler : ' + prixBout + '€ (bouteille).' : '');
+      } else {
+        montantMsg = ' Montant à régler : ' + totalAmount + '€' + (veutBouteille ? ' (dont ' + prixBout + '€ bouteille).' : '.');
+      }
     }
 
     await loadParticipants();
@@ -447,18 +462,23 @@
     showToast(entry.presence ? ('🎉 Inscription reçue !' + montantMsg + factureMsg) : '😢 Dommage, à une prochaine fois !');
   }
 
-  // Cherche le membre par nom complet. Si trouvé : facture en_attente + notif ASSO
-  async function genererFactureEvent(nomComplet, veutBouteille) {
-    let membre = null;
-    const { data: membres } = await sb.from('membres').select('*').neq('role', 'admin');
-    if (membres && membres.length) {
+  // Cherche le membre par nom complet (prénom nom ou nom prénom)
+  async function trouverMembre(nomComplet) {
+    try {
+      const { data: membres } = await sb.from('membres').select('*').neq('role', 'admin');
+      if (!membres || !membres.length) return null;
       const cible = normaliserNom(nomComplet);
-      membre = membres.find(m => {
+      return membres.find(m => {
         const pn = normaliserNom((m.prenom || '') + ' ' + (m.nom || ''));
         const np = normaliserNom((m.nom || '') + ' ' + (m.prenom || ''));
         return pn === cible || np === cible;
-      });
-    }
+      }) || null;
+    } catch (e) { console.warn('Recherche membre:', e); return null; }
+  }
+
+  // Si membre trouvé : facture en_attente + notif ASSO
+  // repasInclus = membre à 150 € → la facture ne porte que la bouteille
+  async function genererFactureEvent(membre, veutBouteille, repasInclus, montant) {
     if (!membre || !membre.email) {
       return ' ⚠️ Facture non générée : nom non reconnu comme membre.';
     }
@@ -466,8 +486,9 @@
     try {
       const numero = await genererNumeroFacture();
       const titreEvent = ev.titre || 'Événement';
-      const montant = (ev.prixNum || 0) + (veutBouteille ? (ev.prixBouteille || 0) : 0);
-      const description = 'Inscription événement : ' + titreEvent + (veutBouteille ? ' (+ bouteille fournie par le club)' : '');
+      const description = repasInclus
+        ? 'Bouteille fournie par le club — ' + titreEvent + ' (repas inclus dans la cotisation 150 €)'
+        : 'Inscription événement : ' + titreEvent + (veutBouteille ? ' (+ bouteille fournie par le club)' : '');
 
       // ÉTAPE 1 : enregistrer la facture en attente de validation (pas de mail membre)
       await sb.from('factures').insert([{
@@ -495,7 +516,7 @@
             nom:       membre.nom || '',
             email:     membre.email || '',
             telephone: membre.telephone || '',
-            detail:    'Inscription événement : ' + titreEvent + '\nFacture n° ' + numero +
+            detail:    description + '\nFacture n° ' + numero +
                        '\nMontant : ' + montant + '€' + (veutBouteille ? ' (dont ' + (ev.prixBouteille || 0) + '€ bouteille fournie par le club)' : '') +
                        '\n→ À valider dans factures_admin.html après réception du paiement.'
           }
